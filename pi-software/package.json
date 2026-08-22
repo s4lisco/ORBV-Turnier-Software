@@ -1,0 +1,12 @@
+{
+  "name": "orbv-pi-software",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tailwindcss -i ./resources/css/app.css -o ./public/css/app.css --minify",
+    "watch": "tailwindcss -i ./resources/css/app.css -o ./public/css/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}

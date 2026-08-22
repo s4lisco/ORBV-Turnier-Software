@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: pi-software
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/var/www/html
+    working_dir: /var/www/html
+    command: php -S 0.0.0.0:8080 -t public public/index.php

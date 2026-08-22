@@ -1,0 +1,7 @@
+database/*.sqlite
+database/*.sqlite-journal
+node_modules/
+storage/imports/*
+storage/exports/*
+!storage/imports/.gitkeep
+!storage/exports/.gitkeep
