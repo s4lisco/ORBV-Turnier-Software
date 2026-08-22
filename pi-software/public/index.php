@@ -58,6 +58,7 @@ $router->post('/admin/judges/generate', [JudgeAdminController::class, 'generate'
 $router->get('/admin/runden', [RoundController::class, 'index']);
 $router->post('/admin/runden/{kategorieId}/starten', [RoundController::class, 'starten']);
 $router->get('/admin/runden/{rundeId}', [RoundController::class, 'show']);
+$router->get('/admin/runden/{rundeId}/status', [RoundController::class, 'status']);
 $router->post('/admin/runden/{rundeId}/freigeben', [RoundController::class, 'freigeben']);
 $router->post('/admin/runden/{rundeId}/abschliessen', [RoundController::class, 'abschliessen']);
 
@@ -72,6 +73,7 @@ $router->get('/kampfrichter', [JudgeAuthController::class, 'showCodeEntry']);
 $router->post('/kampfrichter', [JudgeAuthController::class, 'submitCode']);
 $router->post('/kampfrichter/logout', [JudgeAuthController::class, 'logout']);
 $router->get('/kampfrichter/bewertung', [ScoringController::class, 'index']);
+$router->get('/kampfrichter/bewertung/status', [ScoringController::class, 'status']);
 $router->get('/kampfrichter/bewertung/{rundeId}/{teilnehmerId}', [ScoringController::class, 'showForm']);
 $router->post('/kampfrichter/bewertung/{rundeId}/{teilnehmerId}', [ScoringController::class, 'submit']);
 

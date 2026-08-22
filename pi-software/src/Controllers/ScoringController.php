@@ -13,6 +13,24 @@ final class ScoringController
     public function index(): void
     {
         $judgeId = Auth::requireJudge();
+        $offene = $this->offeneFuerRichter($judgeId);
+
+        View::render('judge/scoring', ['offene' => $offene], 'Bewertung – ORBV Turnier');
+    }
+
+    /** JSON-Endpoint fürs Hintergrund-Polling der Startseite (kein Seiten-Neuladen nötig). */
+    public function status(): void
+    {
+        $judgeId = Auth::requireJudge();
+        $offene = $this->offeneFuerRichter($judgeId);
+
+        header('Content-Type: application/json');
+        echo json_encode(array_values($offene));
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function offeneFuerRichter(int $judgeId): array
+    {
         $pdo = Database::connection();
 
         $stmt = $pdo->prepare(
@@ -29,9 +47,8 @@ final class ScoringController
              ORDER BY k.name, t.startnummer'
         );
         $stmt->execute(['judge_id' => $judgeId]);
-        $offene = $stmt->fetchAll();
 
-        View::render('judge/scoring', ['offene' => $offene], 'Bewertung – ORBV Turnier');
+        return $stmt->fetchAll();
     }
 
     public function showForm(string $rundeId, string $teilnehmerId): void

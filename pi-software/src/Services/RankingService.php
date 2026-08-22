@@ -55,8 +55,11 @@ final class RankingService
         $pdo = Database::connection();
         $roundService = new RoundService();
 
+        // Nur abgeschlossene Finalrunden liefern eine Endrangliste – solange
+        // eine Runde noch läuft (nicht alle 5 Richter fertig), gibt es
+        // bewusst noch kein Ergebnis (Export überspringt die Kategorie dann).
         $stmt = $pdo->prepare(
-            "SELECT id, typ FROM runden WHERE kategorie_id = :kategorie_id AND typ IN ('final1','final2','final')"
+            "SELECT id, typ FROM runden WHERE kategorie_id = :kategorie_id AND typ IN ('final1','final2','final') AND status = 'abgeschlossen'"
         );
         $stmt->execute(['kategorie_id' => $kategorieId]);
         $finalRunden = $stmt->fetchAll();

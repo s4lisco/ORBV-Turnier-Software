@@ -34,17 +34,26 @@ class AnmeldungController extends Controller
         $this->authorizeOffen($turnier);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'geburtsdatum' => ['required', 'date'],
+            'personen' => ['required', 'array', 'min:1'],
+            'personen.*.name' => ['required', 'string', 'max:255'],
+            'personen.*.geburtsdatum' => ['required', 'date'],
         ]);
 
-        AnmeldungSolo::create([
-            'turnier_kategorie_id' => $this->turnierKategorieId($turnier, $kategorie),
-            'verein_id' => Auth::guard('verein')->id(),
-            ...$data,
-        ]);
+        $turnierKategorieId = $this->turnierKategorieId($turnier, $kategorie);
+        $vereinId = Auth::guard('verein')->id();
 
-        return redirect()->route('verein.turniere.show', $turnier)->with('status', 'Anmeldung gespeichert.');
+        foreach ($data['personen'] as $person) {
+            AnmeldungSolo::create([
+                'turnier_kategorie_id' => $turnierKategorieId,
+                'verein_id' => $vereinId,
+                'name' => $person['name'],
+                'geburtsdatum' => $person['geburtsdatum'],
+            ]);
+        }
+
+        $anzahl = count($data['personen']);
+
+        return redirect()->route('verein.turniere.show', $turnier)->with('status', "$anzahl Anmeldung(en) gespeichert.");
     }
 
     public function editSolo(Turnier $turnier, Kategorie $kategorie, AnmeldungSolo $anmeldungSolo): View
@@ -90,19 +99,30 @@ class AnmeldungController extends Controller
         $this->authorizeOffen($turnier);
 
         $data = $request->validate([
-            'name_p1' => ['required', 'string', 'max:255'],
-            'geburtsdatum_p1' => ['required', 'date'],
-            'name_p2' => ['required', 'string', 'max:255'],
-            'geburtsdatum_p2' => ['required', 'date'],
+            'paare' => ['required', 'array', 'min:1'],
+            'paare.*.name_p1' => ['required', 'string', 'max:255'],
+            'paare.*.geburtsdatum_p1' => ['required', 'date'],
+            'paare.*.name_p2' => ['required', 'string', 'max:255'],
+            'paare.*.geburtsdatum_p2' => ['required', 'date'],
         ]);
 
-        AnmeldungPaar::create([
-            'turnier_kategorie_id' => $this->turnierKategorieId($turnier, $kategorie),
-            'verein_id' => Auth::guard('verein')->id(),
-            ...$data,
-        ]);
+        $turnierKategorieId = $this->turnierKategorieId($turnier, $kategorie);
+        $vereinId = Auth::guard('verein')->id();
 
-        return redirect()->route('verein.turniere.show', $turnier)->with('status', 'Anmeldung gespeichert.');
+        foreach ($data['paare'] as $paar) {
+            AnmeldungPaar::create([
+                'turnier_kategorie_id' => $turnierKategorieId,
+                'verein_id' => $vereinId,
+                'name_p1' => $paar['name_p1'],
+                'geburtsdatum_p1' => $paar['geburtsdatum_p1'],
+                'name_p2' => $paar['name_p2'],
+                'geburtsdatum_p2' => $paar['geburtsdatum_p2'],
+            ]);
+        }
+
+        $anzahl = count($data['paare']);
+
+        return redirect()->route('verein.turniere.show', $turnier)->with('status', "$anzahl Anmeldung(en) gespeichert.");
     }
 
     public function editPaar(Turnier $turnier, Kategorie $kategorie, AnmeldungPaar $anmeldungPaar): View
@@ -150,17 +170,26 @@ class AnmeldungController extends Controller
         $this->authorizeOffen($turnier);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'anzahl_taenzerinnen' => ['required', 'integer', 'min:1'],
+            'formationen' => ['required', 'array', 'min:1'],
+            'formationen.*.name' => ['required', 'string', 'max:255'],
+            'formationen.*.anzahl_taenzerinnen' => ['required', 'integer', 'min:1'],
         ]);
 
-        AnmeldungFormation::create([
-            'turnier_kategorie_id' => $this->turnierKategorieId($turnier, $kategorie),
-            'verein_id' => Auth::guard('verein')->id(),
-            ...$data,
-        ]);
+        $turnierKategorieId = $this->turnierKategorieId($turnier, $kategorie);
+        $vereinId = Auth::guard('verein')->id();
 
-        return redirect()->route('verein.turniere.show', $turnier)->with('status', 'Anmeldung gespeichert.');
+        foreach ($data['formationen'] as $formation) {
+            AnmeldungFormation::create([
+                'turnier_kategorie_id' => $turnierKategorieId,
+                'verein_id' => $vereinId,
+                'name' => $formation['name'],
+                'anzahl_taenzerinnen' => $formation['anzahl_taenzerinnen'],
+            ]);
+        }
+
+        $anzahl = count($data['formationen']);
+
+        return redirect()->route('verein.turniere.show', $turnier)->with('status', "$anzahl Anmeldung(en) gespeichert.");
     }
 
     public function editFormation(Turnier $turnier, Kategorie $kategorie, AnmeldungFormation $anmeldungFormation): View

@@ -67,6 +67,19 @@ final class RoundController
         ], 'Rundensteuerung – ORBV Turnier');
     }
 
+    /** JSON-Endpoint fürs Hintergrund-Polling der Rundensteuerung (Live-Status + Abschliessen-Button). */
+    public function status(string $rundeId): void
+    {
+        Auth::requireAdmin();
+        $roundService = new RoundService();
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'live' => array_values($roundService->liveStatusFuerRunde((int) $rundeId)),
+            'kannAbschliessen' => $roundService->istRundeVollstaendigBewertet((int) $rundeId),
+        ]);
+    }
+
     public function freigeben(string $rundeId): void
     {
         Auth::requireAdmin();
