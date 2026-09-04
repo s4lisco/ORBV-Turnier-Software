@@ -44,4 +44,9 @@ class TurnierKategorie extends Model
     {
         return $this->hasMany(AnmeldungFormation::class);
     }
+
+    public function ranglisteEintraege(): HasMany
+    {
+        return $this->hasMany(RanglisteEintrag::class);
+    }
 }

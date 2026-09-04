@@ -8,7 +8,7 @@
             </form>
         </div>
 
-        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
             <a href="{{ route('admin.vereine.index') }}" class="rounded-xl bg-white p-4 text-center shadow hover:bg-slate-50">
                 <div class="text-2xl">🏛️</div>
                 <div class="mt-1 text-sm font-medium">Vereine ({{ $anzahlVereine }})</div>
@@ -20,6 +20,10 @@
             <a href="{{ route('admin.turniere.index') }}" class="rounded-xl bg-white p-4 text-center shadow hover:bg-slate-50">
                 <div class="text-2xl">🏆</div>
                 <div class="mt-1 text-sm font-medium">Turniere ({{ $turniere->count() }})</div>
+            </a>
+            <a href="{{ route('admin.einstellungen.edit') }}" class="rounded-xl bg-white p-4 text-center shadow hover:bg-slate-50">
+                <div class="text-2xl">🖼️</div>
+                <div class="mt-1 text-sm font-medium">Header (Logo &amp; Infotext)</div>
             </a>
         </div>
 

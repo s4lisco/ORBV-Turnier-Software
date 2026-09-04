@@ -14,7 +14,7 @@ use App\Database;
 final class RankingService
 {
     /**
-     * @param array<int, float|null> $ergebnisse teilnehmer_id => Gesamtpunktzahl (null = nicht angetreten/-99)
+     * @param array<int, float|null> $ergebnisse teilnehmer_id => Gesamtpunktzahl (null = DNF, "nicht getanzt")
      * @return array<int, array{teilnehmer_id: int, gesamt: ?float, rang: ?int}>
      */
     public function rangliste(array $ergebnisse): array
@@ -87,9 +87,58 @@ final class RankingService
         }
 
         if (isset($byTyp['final'])) {
-            return $this->rangliste($roundService->ergebnisseFuerRunde($byTyp['final']));
+            $finalRangliste = $this->rangliste($roundService->ergebnisseFuerRunde($byTyp['final']));
+            $ausgeschiedene = $this->hoffnungsrundeAusgeschiedene($kategorieId, $byTyp['final'], $roundService);
+
+            // Hoffnungsrunden-Ausgeschiedene stehen zuunterst, mit fortlaufenden
+            // Rangnummern nach der Finalrangliste (Plan_Feedback_Umsetzung.md 12.4).
+            $offset = count($finalRangliste);
+            foreach ($ausgeschiedene as &$eintrag) {
+                if ($eintrag['rang'] !== null) {
+                    $eintrag['rang'] += $offset;
+                }
+            }
+            unset($eintrag);
+
+            return array_merge($finalRangliste, $ausgeschiedene);
         }
 
         return [];
+    }
+
+    /**
+     * Teilnehmer:innen, die in der Hoffnungsrunde nicht für den Final
+     * qualifiziert haben, sortiert nach ihrer Hoffnungsrunden-Punktzahl
+     * (bestes Ergebnis zuerst) – siehe Plan_Feedback_Umsetzung.md 12.4.
+     *
+     * @return array<int, array{teilnehmer_id: int, gesamt: ?float, rang: ?int}>
+     */
+    private function hoffnungsrundeAusgeschiedene(int $kategorieId, int $finalId, RoundService $roundService): array
+    {
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare(
+            "SELECT id FROM runden WHERE kategorie_id = :kategorie_id AND typ = 'hoffnungsrunde' AND status = 'abgeschlossen'"
+        );
+        $stmt->execute(['kategorie_id' => $kategorieId]);
+        $hoffnungsrunde = $stmt->fetch();
+
+        if (!$hoffnungsrunde) {
+            return [];
+        }
+
+        $finalTeilnehmerIds = array_map(
+            fn ($t) => (int) $t['id'],
+            $roundService->alleTeilnehmerFuerRunde($finalId)
+        );
+
+        $ergebnisseHoffnungsrunde = $roundService->ergebnisseFuerRunde((int) $hoffnungsrunde['id']);
+        $ausgeschiedeneErgebnisse = array_filter(
+            $ergebnisseHoffnungsrunde,
+            fn ($wert, $teilnehmerId) => !in_array($teilnehmerId, $finalTeilnehmerIds, true),
+            ARRAY_FILTER_USE_BOTH
+        );
+
+        return $this->rangliste($ausgeschiedeneErgebnisse);
     }
 }

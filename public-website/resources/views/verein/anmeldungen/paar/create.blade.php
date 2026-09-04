@@ -19,22 +19,22 @@
             <div id="paare-liste" class="space-y-3">
                 <div class="paar-row flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 p-3">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">Name Person 1</label>
+                        <label class="mb-1 block text-sm font-medium text-slate-700">Name Tänzer:in 1</label>
                         <input type="text" name="paare[0][name_p1]" required
                                class="rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum P1</label>
+                        <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum Tänzer:in 1</label>
                         <input type="date" name="paare[0][geburtsdatum_p1]" required
                                class="rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">Name Person 2</label>
+                        <label class="mb-1 block text-sm font-medium text-slate-700">Name Tänzer:in 2</label>
                         <input type="text" name="paare[0][name_p2]" required
                                class="rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum P2</label>
+                        <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum Tänzer:in 2</label>
                         <input type="date" name="paare[0][geburtsdatum_p2]" required
                                class="rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
                     </div>
@@ -45,22 +45,22 @@
             <template id="paar-template">
                 <div class="paar-row flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 p-3">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">Name Person 1</label>
+                        <label class="mb-1 block text-sm font-medium text-slate-700">Name Tänzer:in 1</label>
                         <input type="text" name="paare[__INDEX__][name_p1]" required
                                class="rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum P1</label>
+                        <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum Tänzer:in 1</label>
                         <input type="date" name="paare[__INDEX__][geburtsdatum_p1]" required
                                class="rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">Name Person 2</label>
+                        <label class="mb-1 block text-sm font-medium text-slate-700">Name Tänzer:in 2</label>
                         <input type="text" name="paare[__INDEX__][name_p2]" required
                                class="rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum P2</label>
+                        <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum Tänzer:in 2</label>
                         <input type="date" name="paare[__INDEX__][geburtsdatum_p2]" required
                                class="rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
                     </div>

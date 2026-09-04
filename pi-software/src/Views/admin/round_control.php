@@ -1,25 +1,17 @@
 <div class="mx-auto max-w-2xl p-6">
     <a href="/admin/runden" class="text-sm text-blue-600 hover:underline">&larr; zurück zur Übersicht</a>
     <h1 class="mb-1 mt-2 text-2xl font-bold text-slate-800"><?= htmlspecialchars($runde['kategorie_name']) ?></h1>
-    <p class="mb-6 text-sm text-slate-500">Runde: <?= htmlspecialchars($runde['typ']) ?> · Status: <?= htmlspecialchars($runde['status']) ?></p>
+    <p class="mb-1 text-sm text-slate-500">Runde: <?= htmlspecialchars($runde['typ']) ?> · Status: <?= htmlspecialchars($runde['status']) ?></p>
+    <p class="mb-6 text-sm">
+        <a href="/admin/runden/<?= (int) $runde['id'] ?>/startliste" class="text-blue-600 hover:underline">Startliste ansehen &amp; drucken →</a>
+    </p>
 
     <div class="mb-6 rounded-2xl bg-white p-6 shadow">
-        <h2 class="mb-3 text-lg font-semibold text-slate-800">Nächste Startnummer(n) freigeben</h2>
-        <?php if (empty($offene)): ?>
-            <p class="text-sm text-slate-500">Alle Teilnehmer:innen dieser Runde wurden bereits freigegeben.</p>
-        <?php else: ?>
-            <form method="post" action="/admin/runden/<?= (int) $runde['id'] ?>/freigeben" class="space-y-2">
-                <?php foreach ($offene as $t): ?>
-                    <label class="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
-                        <input type="checkbox" name="teilnehmer_ids[]" value="<?= (int) $t['id'] ?>" class="h-5 w-5">
-                        <span>#<?= (int) $t['startnummer'] ?> – <?= htmlspecialchars($t['name']) ?><?= $t['name_p2'] ? ' &amp; ' . htmlspecialchars($t['name_p2']) : '' ?></span>
-                    </label>
-                <?php endforeach; ?>
-                <button type="submit" class="mt-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                    Auswahl freigeben
-                </button>
-            </form>
-        <?php endif; ?>
+        <h2 class="mb-1 text-lg font-semibold text-slate-800">Ablauf</h2>
+        <p class="text-sm text-slate-500">
+            Die nächste(n) Startnummer(n) werden automatisch für die Wertungsrichter freigegeben,
+            sobald alle 5 die aktuelle(n) Startnummer(n) bewertet haben – kein manueller Schritt nötig.
+        </p>
     </div>
 
     <div class="mb-6 rounded-2xl bg-white p-6 shadow">
@@ -36,17 +28,29 @@
         <div id="live-status"></div>
     </div>
 
-    <form method="post" action="/admin/runden/<?= (int) $runde['id'] ?>/abschliessen">
+    <form method="post" action="/admin/runden/<?= (int) $runde['id'] ?>/abschliessen" class="mb-3">
         <button type="submit" id="abschliessen-button" <?= $kannAbschliessen ? '' : 'disabled' ?>
                 class="w-full rounded-lg px-4 py-3 font-semibold text-white <?= $kannAbschliessen ? 'bg-emerald-600 hover:bg-emerald-700' : 'cursor-not-allowed bg-slate-300' ?>">
             <?= $kannAbschliessen ? 'Runde abschliessen' : 'Runde abschliessen (noch nicht alle bewertet)' ?>
         </button>
     </form>
 
+    <form method="post" action="/admin/runden/<?= (int) $runde['id'] ?>/abbrechen"
+          id="abbrechen-form" class="<?= $kannAbbrechen ? '' : 'hidden' ?>"
+          onsubmit="return confirm('Runde wirklich abbrechen? Alle Startnummern-Freigaben werden zurückgesetzt.')">
+        <button type="submit" class="w-full rounded-lg border border-red-300 bg-white px-4 py-3 font-semibold text-red-600 hover:bg-red-50">
+            Runde abbrechen
+        </button>
+    </form>
+    <p id="abbrechen-hinweis" class="text-center text-xs text-slate-400 <?= $kannAbbrechen ? 'hidden' : '' ?>">
+        Ein Abbruch ist nur möglich, solange noch keine Bewertung abgegeben wurde.
+    </p>
+
     <script>
         const rundeId = <?= (int) $runde['id'] ?>;
         const initialLiveStatus = <?= json_encode(array_values($live)) ?>;
         const initialKannAbschliessen = <?= $kannAbschliessen ? 'true' : 'false' ?>;
+        const initialKannAbbrechen = <?= $kannAbbrechen ? 'true' : 'false' ?>;
         let letzterStand = null;
 
         function fluchtHtml(text) {
@@ -79,7 +83,7 @@
                             const farbe = fertig >= 5 ? 'text-emerald-600 font-semibold' : '';
                             return `
                                 <tr class="border-b">
-                                    <td class="py-2">#${t.startnummer}</td>
+                                    <td class="py-2">#${t.startnummer ?? '–'}</td>
                                     <td class="py-2">${fluchtHtml(t.name)}${nameZusatz}</td>
                                     <td class="py-2 ${farbe}">${fertig} / 5</td>
                                 </tr>`;
@@ -98,6 +102,11 @@
             button.classList.toggle('cursor-not-allowed', !kannAbschliessen);
         }
 
+        function setzeAbbrechenSichtbarkeit(kannAbbrechen) {
+            document.getElementById('abbrechen-form').classList.toggle('hidden', !kannAbbrechen);
+            document.getElementById('abbrechen-hinweis').classList.toggle('hidden', kannAbbrechen);
+        }
+
         async function ladeRundenStatus(erzwingen = false) {
             try {
                 const response = await fetch(`/admin/runden/${rundeId}/status`, {
@@ -114,6 +123,7 @@
                     letzterStand = neuerStand;
                     zeichneLiveStatus(daten.live);
                     setzeAbschliessenButton(daten.kannAbschliessen);
+                    setzeAbbrechenSichtbarkeit(daten.kannAbbrechen);
                 }
 
                 document.getElementById('aktualisiert-hinweis').textContent =
@@ -124,7 +134,7 @@
             }
         }
 
-        letzterStand = JSON.stringify({ live: initialLiveStatus, kannAbschliessen: initialKannAbschliessen });
+        letzterStand = JSON.stringify({ live: initialLiveStatus, kannAbschliessen: initialKannAbschliessen, kannAbbrechen: initialKannAbbrechen });
         zeichneLiveStatus(initialLiveStatus);
         document.getElementById('aktualisiert-hinweis').textContent =
             'zuletzt aktualisiert: ' + new Date().toLocaleTimeString('de-CH');

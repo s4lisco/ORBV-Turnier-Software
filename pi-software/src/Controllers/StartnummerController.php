@@ -13,7 +13,7 @@ final class StartnummerController
     {
         Auth::requireAdmin();
 
-        (new StartnummerService())->vergebenFuerAlleKategorien();
+        (new StartnummerService())->vergeben();
 
         header('Location: /organisatoren');
         exit;

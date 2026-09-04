@@ -13,28 +13,32 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database. Admin und Vereine werden bewusst
      * nicht geseedet (Admin per Setup-Wizard, Vereine legt der Admin an).
+     *
+     * Die 10 Kategorien sind fest im System verankert (siehe Plan_Feedback_Umsetzung.md
+     * 8.1) und werden nicht mehr frei im Admin-Bereich angelegt.
      */
     public function run(): void
     {
-        $solo = Kategorie::create(['name' => 'Solo Dance Einsteiger', 'typ' => 'solo']);
-        $solo->bewertungen()->createMany([
-            ['name' => 'Tanz'],
-            ['name' => 'Ausdruck'],
-            ['name' => 'Technik'],
-        ]);
+        $standardKriterien = ['Tanz', 'Ausdruck', 'Technik'];
 
-        $paar = Kategorie::create(['name' => 'Paartanz Einsteiger', 'typ' => 'paar']);
-        $paar->bewertungen()->createMany([
-            ['name' => 'Tanz'],
-            ['name' => 'Ausdruck'],
-            ['name' => 'Technik'],
-        ]);
+        $kategorien = [
+            ['name' => 'Solo Dance Einsteiger', 'typ' => 'solo'],
+            ['name' => 'Solo Dance Mittel', 'typ' => 'solo'],
+            ['name' => 'Solo Dance Pro', 'typ' => 'solo'],
+            ['name' => 'Paartanz Einsteiger', 'typ' => 'paar'],
+            ['name' => 'Paartanz Mittel', 'typ' => 'paar'],
+            ['name' => 'Paartanz Pro', 'typ' => 'paar'],
+            ['name' => 'Paartanz Akrobatik', 'typ' => 'paar'],
+            ['name' => 'Formation Einsteiger', 'typ' => 'formation'],
+            ['name' => 'Formation Mittel', 'typ' => 'formation'],
+            ['name' => 'Formation Pro', 'typ' => 'formation'],
+        ];
 
-        $formation = Kategorie::create(['name' => 'Formation Hauptklasse', 'typ' => 'formation']);
-        $formation->bewertungen()->createMany([
-            ['name' => 'Tanz'],
-            ['name' => 'Ausdruck'],
-            ['name' => 'Technik'],
-        ]);
+        foreach ($kategorien as $daten) {
+            $kategorie = Kategorie::create($daten);
+            $kategorie->bewertungen()->createMany(
+                array_map(fn (string $name) => ['name' => $name], $standardKriterien)
+            );
+        }
     }
 }

@@ -17,22 +17,22 @@
             @csrf
             @method('PUT')
             <div>
-                <label class="mb-1 block text-sm font-medium text-slate-700">Name Person 1</label>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Name Tänzer:in 1</label>
                 <input type="text" name="name_p1" value="{{ old('name_p1', $anmeldungPaar->name_p1) }}" required
                        class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
             </div>
             <div>
-                <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum Person 1</label>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum Tänzer:in 1</label>
                 <input type="date" name="geburtsdatum_p1" value="{{ old('geburtsdatum_p1', $anmeldungPaar->geburtsdatum_p1->format('Y-m-d')) }}" required
                        class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
             </div>
             <div>
-                <label class="mb-1 block text-sm font-medium text-slate-700">Name Person 2</label>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Name Tänzer:in 2</label>
                 <input type="text" name="name_p2" value="{{ old('name_p2', $anmeldungPaar->name_p2) }}" required
                        class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
             </div>
             <div>
-                <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum Person 2</label>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Geburtsdatum Tänzer:in 2</label>
                 <input type="date" name="geburtsdatum_p2" value="{{ old('geburtsdatum_p2', $anmeldungPaar->geburtsdatum_p2->format('Y-m-d')) }}" required
                        class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none">
             </div>

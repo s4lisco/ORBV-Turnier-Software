@@ -1,11 +1,18 @@
-<div class="mx-auto max-w-2xl p-6">
-    <a href="/admin/ergebnisse" class="text-sm text-blue-600 hover:underline">&larr; zurück zur Übersicht</a>
-    <h1 class="mb-6 mt-2 text-2xl font-bold text-slate-800">Ergebnisse: <?= htmlspecialchars($kategorie['name']) ?></h1>
+<div class="mx-auto max-w-2xl p-6 print:max-w-full print:p-0">
+    <div class="mb-1 flex items-center justify-between print:hidden">
+        <a href="/admin/ergebnisse" class="text-sm text-blue-600 hover:underline">&larr; zurück zur Übersicht</a>
+        <?php if (!empty($rangliste)): ?>
+            <button type="button" onclick="window.print()" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                Drucken
+            </button>
+        <?php endif; ?>
+    </div>
+    <h1 class="mb-6 mt-2 text-2xl font-bold text-slate-800">Endrangliste: <?= htmlspecialchars($kategorie['name']) ?></h1>
 
     <?php if (empty($rangliste)): ?>
         <p class="rounded-2xl bg-white p-6 text-center text-slate-500 shadow">Noch keine Endrangliste verfügbar.</p>
     <?php else: ?>
-        <table class="w-full rounded-2xl bg-white text-left text-sm shadow">
+        <table class="w-full rounded-2xl bg-white text-left text-sm shadow print:rounded-none print:shadow-none">
             <thead>
             <tr class="border-b text-slate-500">
                 <th class="px-4 py-3">Rang</th>
@@ -17,11 +24,11 @@
             <tbody>
             <?php foreach ($rangliste as $eintrag): ?>
                 <?php $t = $teilnehmerNamen[$eintrag['teilnehmer_id']] ?? null; ?>
-                <tr class="border-b">
-                    <td class="px-4 py-3 font-semibold"><?= $eintrag['rang'] ?? '–' ?></td>
+                <tr class="border-b<?= $eintrag['rang'] === null ? ' text-slate-400' : '' ?>">
+                    <td class="px-4 py-3 font-semibold"><?= $eintrag['rang'] === null ? 'DNF' : $eintrag['rang'] ?></td>
                     <td class="px-4 py-3">#<?= $t ? (int) $t['startnummer'] : '?' ?></td>
                     <td class="px-4 py-3"><?= $t ? htmlspecialchars($t['name']) . ($t['name_p2'] ? ' &amp; ' . htmlspecialchars($t['name_p2']) : '') : '?' ?></td>
-                    <td class="px-4 py-3"><?= $eintrag['gesamt'] ?? 'nicht angetreten' ?></td>
+                    <td class="px-4 py-3"><?= $eintrag['gesamt'] ?? 'nicht getanzt' ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

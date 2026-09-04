@@ -1,5 +1,6 @@
 <x-layout>
-    <div class="flex min-h-screen flex-col items-center justify-center gap-8 p-6">
+    <x-orbv-header />
+    <div class="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center gap-8 p-6">
         <div class="text-center">
             <h1 class="text-3xl font-bold text-slate-800">ORBV Turnier-Anmeldung</h1>
             <p class="mt-2 text-slate-500">Ostschweizer Rock'n'Roll und Boogie Woogie Verband</p>
@@ -16,5 +17,6 @@
                 <span class="text-xl font-semibold">Administration</span>
             </a>
         </div>
+        <a href="{{ route('ergebnisse.index') }}" class="text-sm text-blue-600 hover:underline">Ergebnisse ansehen</a>
     </div>
 </x-layout>

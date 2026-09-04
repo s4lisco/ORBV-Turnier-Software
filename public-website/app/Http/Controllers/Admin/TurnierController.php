@@ -52,6 +52,7 @@ class TurnierController extends Controller
             'turnierKategorien.anmeldungenSolo.verein',
             'turnierKategorien.anmeldungenPaar.verein',
             'turnierKategorien.anmeldungenFormation.verein',
+            'turnierKategorien.ranglisteEintraege',
         ]);
 
         return view('admin.turniere.show', ['turnier' => $turnier]);

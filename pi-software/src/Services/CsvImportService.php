@@ -12,9 +12,13 @@ use RuntimeException;
  * Importiert die von turnier.orbv.ch heruntergeladene Teilnehmer-CSV.
  *
  * Erwartete Spalten (Kopfzeile, kommagetrennt):
- * kategorie_name,kategorie_typ,kriterium_name,teilnehmer_typ,teilnehmer_name,
+ * kategorie_id,kategorie_name,kategorie_typ,kriterium_name,teilnehmer_typ,teilnehmer_name,
  * geburtsdatum,name_p2,geburtsdatum_p2,anzahl_taenzerinnen,verein_name
  *
+ * - kategorie_id: ID der Kategorie auf turnier.orbv.ch. Wird zum Abgleich der
+ *   lokalen Kategorie genutzt, damit eine Umbenennung der Kategorie im Admin
+ *   keine neue Kategorie auf dem Pi erzeugt (siehe Plan_Feedback_Umsetzung.md 8.1).
+ *   Optional: fehlt die Spalte (ältere CSV), wird auf Name+Typ zurückgefallen.
  * - kategorie_typ: solo|paar|formation
  * - kriterium_name: mit ";" getrennte Liste der Kriterien dieser Kategorie
  *   (wird nur beim ersten Vorkommen der Kategorie ausgewertet)
@@ -67,13 +71,19 @@ final class CsvImportService
                     continue;
                 }
 
-                $kategorieKey = $data['kategorie_name'] . '|' . $data['kategorie_typ'];
+                $remoteId = isset($data['kategorie_id']) && $data['kategorie_id'] !== ''
+                    ? (int) $data['kategorie_id']
+                    : null;
+                $kategorieKey = $remoteId !== null
+                    ? 'remote:' . $remoteId
+                    : $data['kategorie_name'] . '|' . $data['kategorie_typ'];
 
                 if (!isset($kategorieIds[$kategorieKey])) {
                     $kategorieId = $this->findOrCreateKategorie(
                         $pdo,
                         $data['kategorie_name'],
-                        $data['kategorie_typ']
+                        $data['kategorie_typ'],
+                        $remoteId
                     );
                     $kategorieIds[$kategorieKey] = $kategorieId;
                     $importedKategorien++;
@@ -116,8 +126,28 @@ final class CsvImportService
         return ['teilnehmer' => $importedTeilnehmer, 'kategorien' => $importedKategorien];
     }
 
-    private function findOrCreateKategorie(PDO $pdo, string $name, string $typ): int
+    private function findOrCreateKategorie(PDO $pdo, string $name, string $typ, ?int $remoteId): int
     {
+        if ($remoteId !== null) {
+            $stmt = $pdo->prepare('SELECT id FROM kategorien WHERE remote_id = :remote_id');
+            $stmt->execute(['remote_id' => $remoteId]);
+            $existing = $stmt->fetch();
+
+            if ($existing) {
+                // Name/Typ können sich im Admin geändert haben – hier synchron halten,
+                // die lokale ID (und damit alle Verweise darauf) bleibt stabil.
+                $update = $pdo->prepare('UPDATE kategorien SET name = :name, typ = :typ WHERE id = :id');
+                $update->execute(['name' => $name, 'typ' => $typ, 'id' => $existing['id']]);
+
+                return (int) $existing['id'];
+            }
+
+            $stmt = $pdo->prepare('INSERT INTO kategorien (remote_id, name, typ) VALUES (:remote_id, :name, :typ)');
+            $stmt->execute(['remote_id' => $remoteId, 'name' => $name, 'typ' => $typ]);
+
+            return (int) $pdo->lastInsertId();
+        }
+
         $stmt = $pdo->prepare('SELECT id FROM kategorien WHERE name = :name AND typ = :typ');
         $stmt->execute(['name' => $name, 'typ' => $typ]);
         $existing = $stmt->fetch();

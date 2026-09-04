@@ -27,7 +27,7 @@ test('Gleichstand: zwei 1. Plätze, danach direkt Platz 3', function () {
     assertEquals(4, $rangByTeilnehmer[4]);
 });
 
-test('Nicht angetretene (-99/null) werden ohne Rang ans Ende gestellt', function () {
+test('DNF-Teilnehmer:innen (null) werden ohne Rang ans Ende gestellt', function () {
     $service = new RankingService();
 
     $ergebnisse = [

@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Druckansicht für Startliste/Endrangliste (Plan_Feedback_Umsetzung.md 10.2):
+   kein separates PDF-Rendering, nur @media print + Browser-Druckdialog. */
+@media print {
+    @page {
+        margin: 1.5cm;
+    }
+
+    body {
+        background: white;
+    }
+}

@@ -17,7 +17,7 @@ final class JudgeAuthController
             exit;
         }
 
-        View::render('judge/code_entry', ['error' => null], 'Kampfrichter-Login – ORBV Turnier');
+        View::render('judge/code_entry', ['error' => null], 'Wertungsrichter-Login – ORBV Turnier');
     }
 
     public function submitCode(): void
@@ -29,7 +29,7 @@ final class JudgeAuthController
         $richter = $stmt->fetch();
 
         if (!$richter) {
-            View::render('judge/code_entry', ['error' => 'Code ungültig.'], 'Kampfrichter-Login – ORBV Turnier');
+            View::render('judge/code_entry', ['error' => 'Code ungültig.'], 'Wertungsrichter-Login – ORBV Turnier');
             return;
         }
 

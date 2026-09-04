@@ -19,7 +19,8 @@ final class RoundController
             "SELECT k.id, k.name, k.typ,
                     (SELECT COUNT(*) FROM teilnehmer t WHERE t.kategorie_id = k.id) AS anzahl_teilnehmer,
                     (SELECT COUNT(*) FROM runden r WHERE r.kategorie_id = k.id) AS anzahl_runden,
-                    (SELECT r.id FROM runden r WHERE r.kategorie_id = k.id AND r.status = 'laufend' LIMIT 1) AS laufende_runde_id
+                    (SELECT r.id FROM runden r WHERE r.kategorie_id = k.id AND r.status = 'laufend' LIMIT 1) AS laufende_runde_id,
+                    (SELECT COUNT(*) FROM teilnehmer t WHERE t.kategorie_id = k.id AND t.status = 'aktiv' AND t.startnummer IS NULL) AS anzahl_ohne_startnummer
              FROM kategorien k ORDER BY k.name"
         )->fetchAll();
 
@@ -61,9 +62,9 @@ final class RoundController
 
         View::render('admin/round_control', [
             'runde' => $runde,
-            'offene' => $roundService->offeneTeilnehmerFuerRunde((int) $rundeId),
             'live' => $roundService->liveStatusFuerRunde((int) $rundeId),
             'kannAbschliessen' => $roundService->istRundeVollstaendigBewertet((int) $rundeId),
+            'kannAbbrechen' => $roundService->kannRundeAbbrechen((int) $rundeId),
         ], 'Rundensteuerung – ORBV Turnier');
     }
 
@@ -77,20 +78,37 @@ final class RoundController
         echo json_encode([
             'live' => array_values($roundService->liveStatusFuerRunde((int) $rundeId)),
             'kannAbschliessen' => $roundService->istRundeVollstaendigBewertet((int) $rundeId),
+            'kannAbbrechen' => $roundService->kannRundeAbbrechen((int) $rundeId),
         ]);
     }
 
-    public function freigeben(string $rundeId): void
+    /** Druckbare Startliste einer Runde, separat pro Kategorie (siehe Plan_Feedback_Umsetzung.md 10.1/10.2). */
+    public function startliste(string $rundeId): void
     {
         Auth::requireAdmin();
+        $roundService = new RoundService();
 
-        $teilnehmerIds = array_map('intval', $_POST['teilnehmer_ids'] ?? []);
-        if ($teilnehmerIds !== []) {
-            (new RoundService())->freigeben((int) $rundeId, $teilnehmerIds);
+        $stmt = Database::connection()->prepare(
+            'SELECT r.*, k.name AS kategorie_name, k.typ AS kategorie_typ FROM runden r JOIN kategorien k ON k.id = r.kategorie_id WHERE r.id = :id'
+        );
+        $stmt->execute(['id' => $rundeId]);
+        $runde = $stmt->fetch();
+
+        if (!$runde) {
+            http_response_code(404);
+            echo 'Runde nicht gefunden.';
+            return;
         }
 
-        header('Location: /admin/runden/' . $rundeId);
-        exit;
+        $teilnehmer = $roundService->alleTeilnehmerFuerRunde((int) $rundeId);
+        $paarweise = $roundService->tanztPaarweise($runde['kategorie_typ'], $runde['kategorie_name']);
+
+        View::render('admin/startliste', [
+            'runde' => $runde,
+            'teilnehmer' => $teilnehmer,
+            'paarweise' => $paarweise,
+            'gruppen' => array_chunk($teilnehmer, $paarweise ? 2 : 1),
+        ], 'Startliste: ' . $runde['kategorie_name'] . ' – ORBV Turnier');
     }
 
     public function abschliessen(string $rundeId): void
@@ -99,6 +117,23 @@ final class RoundController
 
         try {
             (new RoundService())->rundeAbschliessen((int) $rundeId);
+        } catch (\Throwable $e) {
+            http_response_code(422);
+            echo htmlspecialchars($e->getMessage());
+            return;
+        }
+
+        header('Location: /admin/runden');
+        exit;
+    }
+
+    /** Bricht die erste Runde einer Kategorie ab (siehe Plan_Feedback_Umsetzung.md 12.3). */
+    public function abbrechen(string $rundeId): void
+    {
+        Auth::requireAdmin();
+
+        try {
+            (new RoundService())->rundeAbbrechen((int) $rundeId);
         } catch (\Throwable $e) {
             http_response_code(422);
             echo htmlspecialchars($e->getMessage());

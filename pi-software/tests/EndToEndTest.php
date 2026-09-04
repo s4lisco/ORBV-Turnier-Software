@@ -18,7 +18,7 @@ test('Ende-zu-Ende: Import -> Startnummern -> Runden -> Endrangliste -> Export',
     assertEquals(2, $result['kategorien']);
 
     // 2. Startnummern
-    (new StartnummerService())->vergebenFuerAlleKategorien();
+    (new StartnummerService())->vergeben();
     $ohneStartnummer = (int) $pdo->query('SELECT COUNT(*) AS c FROM teilnehmer WHERE startnummer IS NULL')->fetch()['c'];
     assertEquals(0, $ohneStartnummer);
 
@@ -68,17 +68,20 @@ test('Ende-zu-Ende: Import -> Startnummern -> Runden -> Endrangliste -> Export',
     orbv_bewerte_ganze_runde($roundService, $finalId, $fortgeschrittenId, $richterIds);
     $roundService->rundeAbschliessen($finalId);
 
+    // 6 Finalist:innen + 3 in der Hoffnungsrunde Ausgeschiedene (zuunterst,
+    // fortlaufende Rangnummern 7-9, siehe Plan_Feedback_Umsetzung.md 12.4).
     $ranglisteFortgeschritten = (new RankingService())->endranglisteFuerKategorie($fortgeschrittenId);
-    assertEquals(6, count($ranglisteFortgeschritten));
+    assertEquals(9, count($ranglisteFortgeschritten));
     assertEquals(1, $ranglisteFortgeschritten[0]['rang']);
+    assertEquals([7, 8, 9], array_column(array_slice($ranglisteFortgeschritten, 6), 'rang'));
 
     // 4. Export
     $csvPath = (new CsvExportService())->exportAlleKategorien();
     assertTrue(is_file($csvPath), 'Export-Datei sollte existieren');
 
     $lines = file($csvPath);
-    // Kopfzeile + 5 (Einsteiger) + 6 (Fortgeschritten Finalist:innen)
-    assertEquals(1 + 5 + 6, count($lines));
+    // Kopfzeile + 5 (Einsteiger) + 9 (Fortgeschritten: 6 Finalist:innen + 3 Hoffnungsrunden-Ausgeschiedene)
+    assertEquals(1 + 5 + 9, count($lines));
 });
 
 /** Gibt alle Teilnehmer:innen einer Runde frei und bewertet sie mit absteigenden, eindeutigen Punktzahlen. */

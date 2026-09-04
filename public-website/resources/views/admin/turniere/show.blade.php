@@ -20,7 +20,7 @@
             <div class="flex flex-col items-end gap-2">
                 <a href="{{ route('admin.turniere.export', $turnier) }}"
                    class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                    CSV für Pi exportieren
+                    Teilnehmerliste exportieren
                 </a>
                 <a href="{{ route('admin.turniere.edit', $turnier) }}" class="text-sm text-blue-600 hover:underline">Turnier bearbeiten</a>
             </div>
@@ -38,6 +38,28 @@
                 </ul>
             </div>
         @endif
+
+        <div class="mb-6 rounded-2xl bg-white p-6 shadow">
+            <h2 class="mb-2 text-lg font-semibold text-slate-800">Rangliste hochladen</h2>
+            <p class="mb-4 text-sm text-slate-500">
+                CSV vom Pi (Menüpunkt "Rangliste für turnier.orbv.ch") hochladen, um die
+                Endergebnisse auf der öffentlichen Ergebnisseite zu veröffentlichen.
+                Ein erneuter Upload ersetzt zuvor veröffentlichte Ergebnisse der jeweiligen Kategorie.
+            </p>
+            <form method="POST" action="{{ route('admin.turniere.rangliste.upload', $turnier) }}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-3">
+                @csrf
+                <input type="file" name="rangliste_csv" accept=".csv,text/csv" required
+                       class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <button type="submit" class="rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                    Hochladen &amp; veröffentlichen
+                </button>
+                @if ($turnier->turnierKategorien->contains(fn ($tk) => $tk->ranglisteEintraege->isNotEmpty()))
+                    <a href="{{ route('ergebnisse.show', $turnier) }}" target="_blank" class="text-sm text-blue-600 hover:underline">
+                        öffentliche Ergebnisseite ansehen
+                    </a>
+                @endif
+            </form>
+        </div>
 
         @forelse ($turnier->turnierKategorien as $turnierKategorie)
             @php $kategorie = $turnierKategorie->kategorie; @endphp
@@ -101,19 +123,19 @@
                                 <form method="POST" action="{{ route('admin.turniere.anmeldungen.paar.update', [$turnier, $a]) }}" class="flex flex-wrap items-end gap-2">
                                     @csrf @method('PUT')
                                     <div>
-                                        <label class="block text-xs text-slate-500">Name P1</label>
+                                        <label class="block text-xs text-slate-500">Name Tänzer:in 1</label>
                                         <input type="text" name="name_p1" value="{{ $a->name_p1 }}" class="rounded border border-slate-300 px-2 py-1">
                                     </div>
                                     <div>
-                                        <label class="block text-xs text-slate-500">Geb. P1</label>
+                                        <label class="block text-xs text-slate-500">Geb. Tänzer:in 1</label>
                                         <input type="date" name="geburtsdatum_p1" value="{{ $a->geburtsdatum_p1->format('Y-m-d') }}" class="rounded border border-slate-300 px-2 py-1">
                                     </div>
                                     <div>
-                                        <label class="block text-xs text-slate-500">Name P2</label>
+                                        <label class="block text-xs text-slate-500">Name Tänzer:in 2</label>
                                         <input type="text" name="name_p2" value="{{ $a->name_p2 }}" class="rounded border border-slate-300 px-2 py-1">
                                     </div>
                                     <div>
-                                        <label class="block text-xs text-slate-500">Geb. P2</label>
+                                        <label class="block text-xs text-slate-500">Geb. Tänzer:in 2</label>
                                         <input type="date" name="geburtsdatum_p2" value="{{ $a->geburtsdatum_p2->format('Y-m-d') }}" class="rounded border border-slate-300 px-2 py-1">
                                     </div>
                                     <span class="pb-1.5 text-sm text-slate-500">{{ $a->verein->name }}</span>
@@ -131,19 +153,19 @@
                     <form method="POST" action="{{ route('admin.turniere.anmeldungen.paar.store', [$turnier, $kategorie]) }}" class="flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-3">
                         @csrf
                         <div>
-                            <label class="block text-xs text-slate-500">Name P1</label>
+                            <label class="block text-xs text-slate-500">Name Tänzer:in 1</label>
                             <input type="text" name="name_p1" required class="rounded border border-slate-300 px-2 py-1">
                         </div>
                         <div>
-                            <label class="block text-xs text-slate-500">Geb. P1</label>
+                            <label class="block text-xs text-slate-500">Geb. Tänzer:in 1</label>
                             <input type="date" name="geburtsdatum_p1" required class="rounded border border-slate-300 px-2 py-1">
                         </div>
                         <div>
-                            <label class="block text-xs text-slate-500">Name P2</label>
+                            <label class="block text-xs text-slate-500">Name Tänzer:in 2</label>
                             <input type="text" name="name_p2" required class="rounded border border-slate-300 px-2 py-1">
                         </div>
                         <div>
-                            <label class="block text-xs text-slate-500">Geb. P2</label>
+                            <label class="block text-xs text-slate-500">Geb. Tänzer:in 2</label>
                             <input type="date" name="geburtsdatum_p2" required class="rounded border border-slate-300 px-2 py-1">
                         </div>
                         <div>

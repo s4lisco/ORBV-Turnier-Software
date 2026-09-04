@@ -1,6 +1,6 @@
 <div class="flex min-h-screen items-center justify-center p-6">
     <div class="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-lg">
-        <h1 class="mb-6 text-2xl font-bold text-slate-800">Kampfrichter-Code</h1>
+        <h1 class="mb-6 text-2xl font-bold text-slate-800">Wertungsrichter-Code</h1>
 
         <?php if ($error): ?>
             <p class="mb-4 rounded-lg bg-red-100 px-4 py-2 text-sm text-red-700"><?= htmlspecialchars($error) ?></p>

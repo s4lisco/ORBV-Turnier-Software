@@ -17,29 +17,6 @@ class KategorieController extends Controller
         ]);
     }
 
-    public function create(): View
-    {
-        return view('admin.kategorien.create');
-    }
-
-    public function store(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'typ' => ['required', 'in:solo,paar,formation'],
-            'kriterien' => ['required', 'string'],
-        ]);
-
-        $kategorie = Kategorie::create([
-            'name' => $data['name'],
-            'typ' => $data['typ'],
-        ]);
-
-        $this->syncKriterien($kategorie, $data['kriterien']);
-
-        return redirect()->route('admin.kategorien.index')->with('status', 'Kategorie angelegt.');
-    }
-
     public function edit(Kategorie $kategorie): View
     {
         $kategorie->load('bewertungen');
@@ -63,13 +40,6 @@ class KategorieController extends Controller
         $this->syncKriterien($kategorie, $data['kriterien']);
 
         return redirect()->route('admin.kategorien.index')->with('status', 'Kategorie aktualisiert.');
-    }
-
-    public function destroy(Kategorie $kategorie): RedirectResponse
-    {
-        $kategorie->delete();
-
-        return redirect()->route('admin.kategorien.index')->with('status', 'Kategorie gelöscht.');
     }
 
     /** Kriterien als kommagetrennte Liste im Formular, z.B. "Tanz, Ausdruck, Technik". */

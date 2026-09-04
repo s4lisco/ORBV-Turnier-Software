@@ -23,7 +23,7 @@ final class JudgeAdminController
         View::render('admin/judges', [
             'richter' => $richter,
             'maxRichter' => self::ANZAHL_RICHTER,
-        ], 'Kampfrichter – ORBV Turnier');
+        ], 'Wertungsrichter – ORBV Turnier');
     }
 
     public function generate(): void

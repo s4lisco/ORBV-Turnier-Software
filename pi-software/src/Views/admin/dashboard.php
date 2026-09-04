@@ -6,14 +6,14 @@
         </form>
     </div>
 
-    <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
         <a href="/admin/import" class="rounded-xl bg-white p-4 text-center shadow hover:bg-slate-50">
             <div class="text-2xl">📥</div>
             <div class="mt-1 text-sm font-medium">Import</div>
         </a>
         <a href="/admin/judges" class="rounded-xl bg-white p-4 text-center shadow hover:bg-slate-50">
             <div class="text-2xl">⭐</div>
-            <div class="mt-1 text-sm font-medium">Kampfrichter (<?= $richterAnzahl ?>/5)</div>
+            <div class="mt-1 text-sm font-medium">Wertungsrichter (<?= $richterAnzahl ?>/5)</div>
         </a>
         <a href="/admin/runden" class="rounded-xl bg-white p-4 text-center shadow hover:bg-slate-50">
             <div class="text-2xl">🏆</div>
@@ -22,6 +22,10 @@
         <a href="/admin/export" class="rounded-xl bg-white p-4 text-center shadow hover:bg-slate-50">
             <div class="text-2xl">📤</div>
             <div class="mt-1 text-sm font-medium">Export</div>
+        </a>
+        <a href="/admin/rangliste-export" class="rounded-xl bg-white p-4 text-center shadow hover:bg-slate-50">
+            <div class="text-2xl">🏁</div>
+            <div class="mt-1 text-sm font-medium">Rangliste für turnier.orbv.ch</div>
         </a>
     </div>
 
@@ -59,5 +63,9 @@
                 </tbody>
             </table>
         <?php endif; ?>
+    </div>
+
+    <div class="mt-6 text-center">
+        <a href="/admin/reset" class="text-xs text-red-500 hover:underline">Turnier zurücksetzen…</a>
     </div>
 </div>

@@ -38,6 +38,14 @@ final class RoundService
             throw new RuntimeException('Keine Teilnehmer:innen in dieser Kategorie.');
         }
 
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) AS c FROM teilnehmer WHERE kategorie_id = :kategorie_id AND status = 'aktiv' AND startnummer IS NULL"
+        );
+        $stmt->execute(['kategorie_id' => $kategorieId]);
+        if ((int) $stmt->fetch()['c'] > 0) {
+            throw new RuntimeException('Bitte zuerst im Dashboard die Startnummern vergeben, bevor die Runde gestartet wird.');
+        }
+
         if (count($teilnehmerIds) <= 6) {
             $final1Id = $this->insertRunde($kategorieId, 'final1', 'laufend', 1);
             $this->setRundeTeilnehmer($final1Id, $teilnehmerIds);
@@ -45,11 +53,15 @@ final class RoundService
             $final2Id = $this->insertRunde($kategorieId, 'final2', 'offen', 2);
             $this->setRundeTeilnehmer($final2Id, array_reverse($teilnehmerIds));
 
+            $this->pruefeUndFreigebenNaechste($final1Id);
+
             return $final1Id;
         }
 
         $vorrundeId = $this->insertRunde($kategorieId, 'vorrunde', 'laufend', 1);
         $this->setRundeTeilnehmer($vorrundeId, $teilnehmerIds);
+
+        $this->pruefeUndFreigebenNaechste($vorrundeId);
 
         return $vorrundeId;
     }
@@ -65,20 +77,38 @@ final class RoundService
         }
     }
 
-    /** @return array<int, array{id:int, startnummer:?int, name:string, name_p2:?string}> */
-    public function offeneTeilnehmerFuerRunde(int $rundeId): array
+    /**
+     * Vollständige Startliste einer Runde (alle Teilnehmer:innen in Startreihenfolge),
+     * unabhängig vom Freigabe-Status – für die Druckansicht (siehe
+     * Plan_Feedback_Umsetzung.md 10.1/10.2).
+     *
+     * @return array<int, array{id:int, startnummer:?int, name:string, name_p2:?string}>
+     */
+    public function alleTeilnehmerFuerRunde(int $rundeId): array
     {
         $stmt = Database::connection()->prepare(
             'SELECT t.id, t.startnummer, t.name, t.name_p2
              FROM runde_teilnehmer rt
              JOIN teilnehmer t ON t.id = rt.teilnehmer_id
              WHERE rt.runde_id = :runde_id
-               AND rt.teilnehmer_id NOT IN (SELECT teilnehmer_id FROM praesenz_status WHERE runde_id = :runde_id2)
              ORDER BY rt.reihenfolge ASC'
         );
-        $stmt->execute(['runde_id' => $rundeId, 'runde_id2' => $rundeId]);
+        $stmt->execute(['runde_id' => $rundeId]);
 
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Solo Dance Einsteiger und Paartanz Einsteiger tanzen laut Spezifikation
+     * paarweise gleichzeitig (docs/turnier-plan.md 5.4/8.4) – die Startliste
+     * muss das entsprechend gruppieren (siehe Plan_Feedback_Umsetzung.md 10.1).
+     * Erkennung über Kategorie-Typ + "Einsteiger" im Namen, da die 10 Kategorien
+     * fix sind (Plan_Feedback_Umsetzung.md 8.1), der Name aber editierbar bleibt.
+     */
+    public function tanztPaarweise(string $kategorieTyp, string $kategorieName): bool
+    {
+        return in_array($kategorieTyp, ['solo', 'paar'], true)
+            && str_contains(mb_strtolower($kategorieName), 'einsteiger');
     }
 
     /** Live-Status: freigegebene Teilnehmer:innen dieser Runde und wie viele der 5 Richter schon bewertet haben. */
@@ -113,21 +143,11 @@ final class RoundService
             return false;
         }
 
-        $stmt = $pdo->prepare(
-            'SELECT t.id, t.status FROM runde_teilnehmer rt
-             JOIN teilnehmer t ON t.id = rt.teilnehmer_id
-             WHERE rt.runde_id = :runde_id'
-        );
+        $stmt = $pdo->prepare('SELECT teilnehmer_id FROM runde_teilnehmer WHERE runde_id = :runde_id');
         $stmt->execute(['runde_id' => $rundeId]);
 
-        foreach ($stmt->fetchAll() as $row) {
-            if ($row['status'] === '-99') {
-                continue;
-            }
-
-            $stmt2 = $pdo->prepare('SELECT COUNT(DISTINCT wertungsrichter_id) AS c FROM bewertungen WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id');
-            $stmt2->execute(['runde_id' => $rundeId, 'teilnehmer_id' => $row['id']]);
-            if ((int) $stmt2->fetch()['c'] < self::ANZAHL_RICHTER) {
+        foreach (array_column($stmt->fetchAll(), 'teilnehmer_id') as $teilnehmerId) {
+            if (!$this->istTeilnehmerVollstaendigBewertet($rundeId, (int) $teilnehmerId)) {
                 return false;
             }
         }
@@ -135,7 +155,138 @@ final class RoundService
         return true;
     }
 
-    /** @return array<int, float|null> teilnehmer_id => Gesamtpunktzahl dieser Runde (null für -99) */
+    /**
+     * Prüft, ob alle 5 Wertungsrichter für diese/n Teilnehmer:in in dieser Runde
+     * abgestimmt haben – unabhängig vom status (auch DNF-Teilnehmer:innen erhalten
+     * über den "Nicht getanzt"-Button echte Bewertungszeilen je Richter, siehe 8.4).
+     */
+    private function istTeilnehmerVollstaendigBewertet(int $rundeId, int $teilnehmerId): bool
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT COUNT(DISTINCT wertungsrichter_id) AS c FROM bewertungen WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id'
+        );
+        $stmt->execute(['runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId]);
+
+        return (int) $stmt->fetch()['c'] >= self::ANZAHL_RICHTER;
+    }
+
+    /**
+     * Gibt die nächste(n) Startnummer(n) automatisch frei, sobald alle bereits
+     * freigegebenen Teilnehmer:innen dieser Runde von allen 5 Richtern bewertet
+     * wurden (Plan_Feedback_Umsetzung.md 11.3). Bei "paarweise"-Kategorien
+     * (11.4/10.1) werden zwei auf einmal freigegeben, sonst eine. Nach jeder
+     * Bewertungsabgabe erneut aufrufen (siehe ScoringController::submit).
+     */
+    public function pruefeUndFreigebenNaechste(int $rundeId): void
+    {
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare(
+            'SELECT k.typ AS kategorie_typ, k.name AS kategorie_name
+             FROM runden r JOIN kategorien k ON k.id = r.kategorie_id
+             WHERE r.id = :id'
+        );
+        $stmt->execute(['id' => $rundeId]);
+        $runde = $stmt->fetch();
+
+        if (!$runde) {
+            return;
+        }
+
+        $stmt = $pdo->prepare('SELECT teilnehmer_id FROM praesenz_status WHERE runde_id = :runde_id');
+        $stmt->execute(['runde_id' => $rundeId]);
+        $freigegebeneIds = array_map('intval', array_column($stmt->fetchAll(), 'teilnehmer_id'));
+
+        foreach ($freigegebeneIds as $teilnehmerId) {
+            if (!$this->istTeilnehmerVollstaendigBewertet($rundeId, $teilnehmerId)) {
+                return;
+            }
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT teilnehmer_id FROM runde_teilnehmer WHERE runde_id = :runde_id
+               AND teilnehmer_id NOT IN (SELECT teilnehmer_id FROM praesenz_status WHERE runde_id = :runde_id2)
+             ORDER BY reihenfolge ASC'
+        );
+        $stmt->execute(['runde_id' => $rundeId, 'runde_id2' => $rundeId]);
+        $naechste = array_map('intval', array_column($stmt->fetchAll(), 'teilnehmer_id'));
+
+        if ($naechste === []) {
+            return;
+        }
+
+        $batchGroesse = $this->tanztPaarweise($runde['kategorie_typ'], $runde['kategorie_name']) ? 2 : 1;
+        $this->freigeben($rundeId, array_slice($naechste, 0, $batchGroesse));
+    }
+
+    /**
+     * Ermittelt die aktuelle Aufgabe eines Wertungsrichters (Plan_Feedback_Umsetzung.md 11.1/11.2/11.3):
+     * - 'bewerten': es gibt aktuell freigegebene Teilnehmer:innen, die dieser Richter noch nicht
+     *   bewertet hat (1 oder 2, je nach paarweise) → Bewertungsformular zeigen.
+     * - 'warten': alles aktuell Freigegebene wurde von diesem Richter bereits bewertet, aber es
+     *   gibt (in irgendeiner laufenden Runde) noch Freigegebenes, auf das andere Richter noch
+     *   nicht fertig sind → Warteseite.
+     * - 'leerlauf': keine laufende Runde hat aktuell etwas Freigegebenes → Infoseite.
+     *
+     * @return array{status:string, runde_id?:int, teilnehmer?:array, paarweise?:bool}
+     */
+    public function aktuelleAufgabeFuerRichter(int $wertungsrichterId): array
+    {
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare(
+            "SELECT r.id, k.typ AS kategorie_typ, k.name AS kategorie_name
+             FROM runden r JOIN kategorien k ON k.id = r.kategorie_id
+             WHERE r.status = 'laufend'
+             ORDER BY r.id ASC"
+        );
+        $stmt->execute();
+        $laufendeRunden = $stmt->fetchAll();
+
+        $wartetAufRundeId = null;
+
+        foreach ($laufendeRunden as $runde) {
+            $rundeId = (int) $runde['id'];
+
+            $stmt2 = $pdo->prepare(
+                'SELECT t.id, t.startnummer, t.name, t.name_p2
+                 FROM praesenz_status p
+                 JOIN teilnehmer t ON t.id = p.teilnehmer_id
+                 WHERE p.runde_id = :runde_id
+                   AND t.id NOT IN (
+                       SELECT teilnehmer_id FROM bewertungen WHERE runde_id = :runde_id2 AND wertungsrichter_id = :wertungsrichter_id
+                   )
+                 ORDER BY p.freigegeben_am ASC'
+            );
+            $stmt2->execute(['runde_id' => $rundeId, 'runde_id2' => $rundeId, 'wertungsrichter_id' => $wertungsrichterId]);
+            $offenFuerRichter = $stmt2->fetchAll();
+
+            if ($offenFuerRichter !== []) {
+                return [
+                    'status' => 'bewerten',
+                    'runde_id' => $rundeId,
+                    'teilnehmer' => $offenFuerRichter,
+                    'paarweise' => $this->tanztPaarweise($runde['kategorie_typ'], $runde['kategorie_name']),
+                ];
+            }
+
+            if ($wartetAufRundeId === null) {
+                $stmt3 = $pdo->prepare('SELECT COUNT(*) AS c FROM praesenz_status WHERE runde_id = :runde_id');
+                $stmt3->execute(['runde_id' => $rundeId]);
+                if ((int) $stmt3->fetch()['c'] > 0) {
+                    $wartetAufRundeId = $rundeId;
+                }
+            }
+        }
+
+        if ($wartetAufRundeId !== null) {
+            return ['status' => 'warten', 'runde_id' => $wartetAufRundeId];
+        }
+
+        return ['status' => 'leerlauf'];
+    }
+
+    /** @return array<int, float|null> teilnehmer_id => Gesamtpunktzahl dieser Runde (null für dnf) */
     public function ergebnisseFuerRunde(int $rundeId): array
     {
         $pdo = Database::connection();
@@ -154,7 +305,7 @@ final class RoundService
         foreach ($teilnehmer as $t) {
             $teilnehmerId = (int) $t['teilnehmer_id'];
 
-            if ($t['status'] === '-99') {
+            if ($t['status'] === 'dnf') {
                 $ergebnisse[$teilnehmerId] = null;
                 continue;
             }
@@ -214,6 +365,76 @@ final class RoundService
         };
     }
 
+    /**
+     * Ob die erste Runde einer Kategorie aktuell noch abgebrochen werden kann
+     * (Plan_Feedback_Umsetzung.md 12.3) – für die Anzeige des Abbrechen-Buttons.
+     */
+    public function kannRundeAbbrechen(int $rundeId): bool
+    {
+        try {
+            $this->pruefeRundeAbbrechbar($rundeId);
+            return true;
+        } catch (RuntimeException) {
+            return false;
+        }
+    }
+
+    /**
+     * Bricht die erste Runde einer Kategorie ab, solange noch keine einzige
+     * Bewertung abgegeben wurde (Plan_Feedback_Umsetzung.md 12.3). Nur für die
+     * erste Runde (vorrunde/final1, inkl. des dabei bereits angelegten
+     * final2-Geschwisters) möglich: Folgerunden entstehen automatisch aus einer
+     * bereits abgeschlossenen – und damit nicht mehr rückgängig machbaren –
+     * Vorgänger-Runde, für sie gibt es daher bewusst keinen Abbruch.
+     */
+    public function rundeAbbrechen(int $rundeId): void
+    {
+        $runde = $this->pruefeRundeAbbrechbar($rundeId);
+        $kategorieId = (int) $runde['kategorie_id'];
+
+        $pdo = Database::connection();
+        $stmt = $pdo->prepare('SELECT id FROM runden WHERE kategorie_id = :kategorie_id');
+        $stmt->execute(['kategorie_id' => $kategorieId]);
+        $rundenIds = array_map('intval', array_column($stmt->fetchAll(), 'id'));
+
+        $pdo->beginTransaction();
+        foreach ($rundenIds as $id) {
+            $pdo->prepare('DELETE FROM praesenz_status WHERE runde_id = :id')->execute(['id' => $id]);
+            $pdo->prepare('DELETE FROM bewertungen WHERE runde_id = :id')->execute(['id' => $id]);
+            $pdo->prepare('DELETE FROM runde_teilnehmer WHERE runde_id = :id')->execute(['id' => $id]);
+            $pdo->prepare('DELETE FROM runden WHERE id = :id')->execute(['id' => $id]);
+        }
+        $pdo->commit();
+    }
+
+    /** @return array<string, mixed> die Runde, falls abbrechbar */
+    private function pruefeRundeAbbrechbar(int $rundeId): array
+    {
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare('SELECT * FROM runden WHERE id = :id');
+        $stmt->execute(['id' => $rundeId]);
+        $runde = $stmt->fetch();
+
+        if (!$runde) {
+            throw new RuntimeException('Runde nicht gefunden.');
+        }
+
+        $stmt = $pdo->prepare('SELECT COUNT(*) AS c FROM bewertungen WHERE runde_id = :id');
+        $stmt->execute(['id' => $rundeId]);
+        if ((int) $stmt->fetch()['c'] > 0) {
+            throw new RuntimeException('Runde kann nicht abgebrochen werden: Es wurde bereits mindestens eine Bewertung abgegeben.');
+        }
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) AS c FROM runden WHERE kategorie_id = :kategorie_id AND status = 'abgeschlossen'");
+        $stmt->execute(['kategorie_id' => $runde['kategorie_id']]);
+        if ((int) $stmt->fetch()['c'] > 0) {
+            throw new RuntimeException('Runde kann nicht abgebrochen werden: Für diese Kategorie wurde bereits eine vorherige Runde abgeschlossen.');
+        }
+
+        return $runde;
+    }
+
     private function nachVorrunde(int $kategorieId, array $ergebnisse): void
     {
         $rangliste = (new RankingService())->rangliste($ergebnisse);
@@ -230,16 +451,22 @@ final class RoundService
         if (count($rest) === 0) {
             $finalId = $this->insertRunde($kategorieId, 'final', 'laufend', 2);
             $this->setRundeTeilnehmer($finalId, $direkteIds);
+            $this->pruefeUndFreigebenNaechste($finalId);
             return;
         }
 
         $restIds = array_map(fn ($r) => (int) $r['teilnehmer_id'], $rest);
+        // Reihenfolge der Hoffnungsrunde ist zufällig, nicht identisch zur
+        // Vorrunden-Ranglisten-Reihenfolge (Plan_Feedback_Umsetzung.md 12.2).
+        shuffle($restIds);
 
         $hoffnungsrundeId = $this->insertRunde($kategorieId, 'hoffnungsrunde', 'laufend', 2);
         $this->setRundeTeilnehmer($hoffnungsrundeId, $restIds);
 
         $finalId = $this->insertRunde($kategorieId, 'final', 'offen', 3);
         $this->setRundeTeilnehmer($finalId, $direkteIds);
+
+        $this->pruefeUndFreigebenNaechste($hoffnungsrundeId);
     }
 
     private function nachHoffnungsrunde(int $kategorieId, array $ergebnisse): void
@@ -273,14 +500,24 @@ final class RoundService
         }
 
         $pdo->prepare("UPDATE runden SET status = 'laufend' WHERE id = :id")->execute(['id' => $finalId]);
+        $this->pruefeUndFreigebenNaechste($finalId);
     }
 
     private function aktiviereRunde(int $kategorieId, string $typ): void
     {
-        $stmt = Database::connection()->prepare(
+        $pdo = Database::connection();
+        $stmt = $pdo->prepare(
             "UPDATE runden SET status = 'laufend' WHERE kategorie_id = :kategorie_id AND typ = :typ"
         );
         $stmt->execute(['kategorie_id' => $kategorieId, 'typ' => $typ]);
+
+        $stmt = $pdo->prepare('SELECT id FROM runden WHERE kategorie_id = :kategorie_id AND typ = :typ');
+        $stmt->execute(['kategorie_id' => $kategorieId, 'typ' => $typ]);
+        $rundeId = $stmt->fetch()['id'] ?? null;
+
+        if ($rundeId !== null) {
+            $this->pruefeUndFreigebenNaechste((int) $rundeId);
+        }
     }
 
     private function insertRunde(int $kategorieId, string $typ, string $status, int $reihenfolge): int

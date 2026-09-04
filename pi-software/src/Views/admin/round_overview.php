@@ -10,11 +10,17 @@
                     <div class="text-sm text-slate-500"><?= (int) $kategorie['anzahl_teilnehmer'] ?> Teilnehmer:innen</div>
                 </div>
                 <?php if ((int) $kategorie['anzahl_runden'] === 0): ?>
-                    <form method="post" action="/admin/runden/<?= (int) $kategorie['id'] ?>/starten">
-                        <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                            Erste Runde starten
-                        </button>
-                    </form>
+                    <?php if ((int) $kategorie['anzahl_ohne_startnummer'] > 0): ?>
+                        <span class="text-xs text-red-500" title="Erst im Dashboard die Startnummern vergeben.">
+                            Startnummern fehlen (<?= (int) $kategorie['anzahl_ohne_startnummer'] ?>)
+                        </span>
+                    <?php else: ?>
+                        <form method="post" action="/admin/runden/<?= (int) $kategorie['id'] ?>/starten">
+                            <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                                Erste Runde starten
+                            </button>
+                        </form>
+                    <?php endif; ?>
                 <?php elseif ($kategorie['laufende_runde_id']): ?>
                     <a href="/admin/runden/<?= (int) $kategorie['laufende_runde_id'] ?>" class="text-sm font-semibold text-blue-600 hover:underline">Laufende Runde steuern →</a>
                 <?php else: ?>

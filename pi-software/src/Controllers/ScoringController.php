@@ -6,162 +6,146 @@ namespace App\Controllers;
 
 use App\Auth;
 use App\Database;
+use App\Services\RoundService;
 use App\View;
 
+/**
+ * Wertungsrichter-Workflow (Plan_Feedback_Umsetzung.md Phase 11): kein
+ * Auswahlbildschirm mehr – die Ansicht zeigt direkt die aktuelle Aufgabe des
+ * Richters (bewerten / warten / leerlauf), ermittelt über
+ * RoundService::aktuelleAufgabeFuerRichter().
+ */
 final class ScoringController
 {
     public function index(): void
     {
         $judgeId = Auth::requireJudge();
-        $offene = $this->offeneFuerRichter($judgeId);
-
-        View::render('judge/scoring', ['offene' => $offene], 'Bewertung – ORBV Turnier');
+        $this->renderAufgabe((new RoundService())->aktuelleAufgabeFuerRichter($judgeId));
     }
 
-    /** JSON-Endpoint fürs Hintergrund-Polling der Startseite (kein Seiten-Neuladen nötig). */
+    /** JSON-Endpoint fürs Polling der Warte-/Leerlaufseite (alle 2s, siehe 11.3). */
     public function status(): void
     {
         $judgeId = Auth::requireJudge();
-        $offene = $this->offeneFuerRichter($judgeId);
+        $aufgabe = (new RoundService())->aktuelleAufgabeFuerRichter($judgeId);
 
         header('Content-Type: application/json');
-        echo json_encode(array_values($offene));
+        echo json_encode(['status' => $aufgabe['status']]);
     }
 
-    /** @return array<int, array<string, mixed>> */
-    private function offeneFuerRichter(int $judgeId): array
-    {
-        $pdo = Database::connection();
-
-        $stmt = $pdo->prepare(
-            'SELECT p.runde_id, p.teilnehmer_id, t.startnummer, t.name, t.name_p2, k.name AS kategorie_name, r.typ AS runde_typ,
-                    (SELECT COUNT(DISTINCT kr.id) FROM kriterien kr WHERE kr.kategorie_id = k.id) AS anzahl_kriterien,
-                    (SELECT COUNT(*) FROM bewertungen b
-                        WHERE b.runde_id = p.runde_id AND b.teilnehmer_id = p.teilnehmer_id
-                          AND b.wertungsrichter_id = :judge_id) AS bereits_bewertet
-             FROM praesenz_status p
-             JOIN teilnehmer t ON t.id = p.teilnehmer_id
-             JOIN runden r ON r.id = p.runde_id
-             JOIN kategorien k ON k.id = t.kategorie_id
-             WHERE r.status = "laufend"
-             ORDER BY k.name, t.startnummer'
-        );
-        $stmt->execute(['judge_id' => $judgeId]);
-
-        return $stmt->fetchAll();
-    }
-
-    public function showForm(string $rundeId, string $teilnehmerId): void
+    public function submit(string $rundeId): void
     {
         $judgeId = Auth::requireJudge();
-        $pdo = Database::connection();
+        $roundService = new RoundService();
 
-        $stmt = $pdo->prepare(
-            'SELECT t.*, k.name AS kategorie_name FROM teilnehmer t
-             JOIN kategorien k ON k.id = t.kategorie_id
-             WHERE t.id = :teilnehmer_id'
-        );
-        $stmt->execute(['teilnehmer_id' => $teilnehmerId]);
-        $teilnehmer = $stmt->fetch();
+        $aufgabe = $roundService->aktuelleAufgabeFuerRichter($judgeId);
 
-        if (!$teilnehmer) {
-            http_response_code(404);
-            echo 'Teilnehmer:in nicht gefunden.';
-            return;
-        }
-
-        $stmt = $pdo->prepare('SELECT id, name FROM kriterien WHERE kategorie_id = :kategorie_id ORDER BY id');
-        $stmt->execute(['kategorie_id' => $teilnehmer['kategorie_id']]);
-        $kriterien = $stmt->fetchAll();
-
-        $stmt = $pdo->prepare(
-            'SELECT COUNT(*) AS c FROM bewertungen WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id AND wertungsrichter_id = :judge_id'
-        );
-        $stmt->execute(['runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId, 'judge_id' => $judgeId]);
-        $bereitsBewertet = (int) $stmt->fetch()['c'] > 0;
-
-        View::render('judge/scoring_form', [
-            'teilnehmer' => $teilnehmer,
-            'kriterien' => $kriterien,
-            'rundeId' => $rundeId,
-            'bereitsBewertet' => $bereitsBewertet,
-            'error' => null,
-        ], 'Bewertung – ORBV Turnier');
-    }
-
-    public function submit(string $rundeId, string $teilnehmerId): void
-    {
-        $judgeId = Auth::requireJudge();
-        $pdo = Database::connection();
-
-        $stmt = $pdo->prepare(
-            'SELECT COUNT(*) AS c FROM bewertungen WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id AND wertungsrichter_id = :judge_id'
-        );
-        $stmt->execute(['runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId, 'judge_id' => $judgeId]);
-        if ((int) $stmt->fetch()['c'] > 0) {
+        // Stand hat sich seit dem Laden des Formulars geändert (z.B. bereits über
+        // einen anderen Tab abgesendet) – einfach neu ermitteln lassen statt
+        // versehentlich doppelt/falsch zu speichern.
+        if ($aufgabe['status'] !== 'bewerten' || (int) $aufgabe['runde_id'] !== (int) $rundeId) {
             header('Location: /kampfrichter/bewertung');
             exit;
         }
 
-        $stmt = $pdo->prepare('SELECT kategorie_id FROM teilnehmer WHERE id = :id');
-        $stmt->execute(['id' => $teilnehmerId]);
+        $pdo = Database::connection();
+        $erwarteteTeilnehmerIds = array_map(fn ($t) => (int) $t['id'], $aufgabe['teilnehmer']);
+
+        $stmt = $pdo->prepare('SELECT kategorie_id FROM runden WHERE id = :id');
+        $stmt->execute(['id' => $rundeId]);
         $kategorieId = $stmt->fetch()['kategorie_id'];
 
         $stmt = $pdo->prepare('SELECT id FROM kriterien WHERE kategorie_id = :kategorie_id');
         $stmt->execute(['kategorie_id' => $kategorieId]);
         $kriterienIds = array_column($stmt->fetchAll(), 'id');
 
-        $punkte = $_POST['punkte'] ?? [];
-        foreach ($kriterienIds as $kriteriumId) {
-            $wert = $punkte[$kriteriumId] ?? null;
-            if ($wert === null || $wert === '' || !is_numeric($wert) || (float) $wert < 0 || (float) $wert > 10) {
-                $this->showFormWithError($rundeId, $teilnehmerId, 'Bitte für jedes Kriterium eine Punktzahl zwischen 0 und 10 eingeben.');
-                return;
+        $punkteInput = $_POST['punkte'] ?? [];
+        $nichtGetanztInput = $_POST['nicht_getanzt'] ?? [];
+
+        $zuSpeichern = [];
+        foreach ($erwarteteTeilnehmerIds as $teilnehmerId) {
+            $istDnf = ($nichtGetanztInput[$teilnehmerId] ?? '0') === '1';
+
+            if ($istDnf) {
+                $zuSpeichern[$teilnehmerId] = array_fill_keys($kriterienIds, 0.0);
+                continue;
             }
+
+            $werte = [];
+            foreach ($kriterienIds as $kriteriumId) {
+                $wert = $punkteInput[$teilnehmerId][$kriteriumId] ?? null;
+                if ($wert === null || $wert === '' || !is_numeric($wert) || (float) $wert < 0 || (float) $wert > 10) {
+                    $this->renderAufgabe($aufgabe, 'Bitte für jedes Kriterium eine Punktzahl zwischen 0 und 10 eingeben (oder "Nicht getanzt" markieren).');
+                    return;
+                }
+                $werte[$kriteriumId] = (float) $wert;
+            }
+            $zuSpeichern[$teilnehmerId] = $werte;
         }
 
         $insert = $pdo->prepare(
             'INSERT INTO bewertungen (runde_id, teilnehmer_id, wertungsrichter_id, kriterium_id, punkte)
              VALUES (:runde_id, :teilnehmer_id, :wertungsrichter_id, :kriterium_id, :punkte)'
         );
+        $updateStatus = $pdo->prepare("UPDATE teilnehmer SET status = 'dnf' WHERE id = :id");
 
         $pdo->beginTransaction();
-        foreach ($kriterienIds as $kriteriumId) {
-            $insert->execute([
-                'runde_id' => $rundeId,
-                'teilnehmer_id' => $teilnehmerId,
-                'wertungsrichter_id' => $judgeId,
-                'kriterium_id' => $kriteriumId,
-                'punkte' => (float) $punkte[$kriteriumId],
-            ]);
+        foreach ($zuSpeichern as $teilnehmerId => $werte) {
+            foreach ($werte as $kriteriumId => $punkte) {
+                $insert->execute([
+                    'runde_id' => $rundeId,
+                    'teilnehmer_id' => $teilnehmerId,
+                    'wertungsrichter_id' => $judgeId,
+                    'kriterium_id' => $kriteriumId,
+                    'punkte' => $punkte,
+                ]);
+            }
+            if (($nichtGetanztInput[$teilnehmerId] ?? '0') === '1') {
+                $updateStatus->execute(['id' => $teilnehmerId]);
+            }
         }
         $pdo->commit();
+
+        $roundService->pruefeUndFreigebenNaechste((int) $rundeId);
 
         header('Location: /kampfrichter/bewertung');
         exit;
     }
 
-    private function showFormWithError(string $rundeId, string $teilnehmerId, string $error): void
+    /** @param array{status:string, runde_id?:int, teilnehmer?:array, paarweise?:bool} $aufgabe */
+    private function renderAufgabe(array $aufgabe, ?string $error = null): void
+    {
+        match ($aufgabe['status']) {
+            'bewerten' => $this->renderBewertungsformular($aufgabe, $error),
+            'warten' => View::render('judge/warten', [], 'Warten auf die anderen Richter – ORBV Turnier'),
+            default => View::render('judge/leerlauf', [], 'Warte auf nächste Runde – ORBV Turnier'),
+        };
+    }
+
+    /** @param array{status:string, runde_id?:int, teilnehmer?:array, paarweise?:bool} $aufgabe */
+    private function renderBewertungsformular(array $aufgabe, ?string $error): void
     {
         $pdo = Database::connection();
+        $rundeId = $aufgabe['runde_id'];
 
         $stmt = $pdo->prepare(
-            'SELECT t.*, k.name AS kategorie_name FROM teilnehmer t
-             JOIN kategorien k ON k.id = t.kategorie_id
-             WHERE t.id = :teilnehmer_id'
+            'SELECT k.id AS kategorie_id, k.name AS kategorie_name
+             FROM runden r JOIN kategorien k ON k.id = r.kategorie_id
+             WHERE r.id = :id'
         );
-        $stmt->execute(['teilnehmer_id' => $teilnehmerId]);
-        $teilnehmer = $stmt->fetch();
+        $stmt->execute(['id' => $rundeId]);
+        $kategorie = $stmt->fetch();
 
         $stmt = $pdo->prepare('SELECT id, name FROM kriterien WHERE kategorie_id = :kategorie_id ORDER BY id');
-        $stmt->execute(['kategorie_id' => $teilnehmer['kategorie_id']]);
+        $stmt->execute(['kategorie_id' => $kategorie['kategorie_id']]);
         $kriterien = $stmt->fetchAll();
 
         View::render('judge/scoring_form', [
-            'teilnehmer' => $teilnehmer,
-            'kriterien' => $kriterien,
             'rundeId' => $rundeId,
-            'bereitsBewertet' => false,
+            'kategorieName' => $kategorie['kategorie_name'],
+            'teilnehmer' => $aufgabe['teilnehmer'],
+            'paarweise' => $aufgabe['paarweise'],
+            'kriterien' => $kriterien,
             'error' => $error,
         ], 'Bewertung – ORBV Turnier');
     }

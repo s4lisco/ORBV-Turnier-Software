@@ -2,11 +2,9 @@
     <div class="mx-auto max-w-3xl p-6">
         <a href="{{ route('admin.dashboard') }}" class="text-sm text-blue-600 hover:underline">&larr; zurück zum Dashboard</a>
 
-        <div class="mb-6 mt-2 flex items-center justify-between">
+        <div class="mb-6 mt-2">
             <h1 class="text-2xl font-bold text-slate-800">Kategorien</h1>
-            <a href="{{ route('admin.kategorien.create') }}" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                + Neue Kategorie
-            </a>
+            <p class="mt-1 text-sm text-slate-500">Die 10 Kategorien sind fest hinterlegt. Name, Typ und Bewertungskriterien können bearbeitet werden.</p>
         </div>
 
         @if (session('status'))
@@ -22,11 +20,6 @@
                     </div>
                     <div class="flex items-center gap-3 text-sm">
                         <a href="{{ route('admin.kategorien.edit', $kategorie) }}" class="text-blue-600 hover:underline">bearbeiten</a>
-                        <form method="POST" action="{{ route('admin.kategorien.destroy', $kategorie) }}" onsubmit="return confirm('Kategorie wirklich löschen?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-red-600 hover:underline">löschen</button>
-                        </form>
                     </div>
                 </div>
             @empty

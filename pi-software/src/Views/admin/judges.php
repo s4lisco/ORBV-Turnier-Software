@@ -1,6 +1,6 @@
 <div class="mx-auto max-w-2xl p-6">
     <a href="/organisatoren" class="text-sm text-blue-600 hover:underline">&larr; zurück zum Dashboard</a>
-    <h1 class="mb-6 mt-2 text-2xl font-bold text-slate-800">Kampfrichter-Codes</h1>
+    <h1 class="mb-6 mt-2 text-2xl font-bold text-slate-800">Wertungsrichter-Codes</h1>
 
     <div class="rounded-2xl bg-white p-6 shadow">
         <?php if (empty($richter)): ?>
@@ -23,7 +23,7 @@
                 </button>
             </form>
         <?php else: ?>
-            <p class="text-sm text-emerald-700">Alle 5 Kampfrichter-Codes wurden erzeugt.</p>
+            <p class="text-sm text-emerald-700">Alle 5 Wertungsrichter-Codes wurden erzeugt.</p>
         <?php endif; ?>
     </div>
 </div>

@@ -1,10 +1,13 @@
 <?php
 
 use App\Http\Controllers\Admin\AnmeldungController as AdminAnmeldungController;
+use App\Http\Controllers\ErgebnisseController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\EinstellungController;
 use App\Http\Controllers\Admin\ExportController;
 use App\Http\Controllers\Admin\KategorieController;
+use App\Http\Controllers\Admin\RanglisteController;
 use App\Http\Controllers\Admin\SetupController;
 use App\Http\Controllers\Admin\TurnierController as AdminTurnierController;
 use App\Http\Controllers\Admin\VereinController;
@@ -15,6 +18,10 @@ use App\Http\Controllers\Verein\TurnierController as VereinTurnierController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('home'))->name('home');
+
+// --- Öffentliche Ergebnisseite (kein Login nötig, siehe Plan_Feedback_Umsetzung.md 9.3) ---
+Route::get('ergebnisse', [ErgebnisseController::class, 'index'])->name('ergebnisse.index');
+Route::get('ergebnisse/{turnier}', [ErgebnisseController::class, 'show'])->name('ergebnisse.show');
 
 // --- Admin: Ersteinrichtung & Login (kein auth:admin nötig) ---
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -28,12 +35,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
 Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function () {
     Route::post('logout', [AdminAuthController::class, 'logout'])->name('logout');
     Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('einstellungen', [EinstellungController::class, 'edit'])->name('einstellungen.edit');
+    Route::put('einstellungen', [EinstellungController::class, 'update'])->name('einstellungen.update');
 
     Route::resource('vereine', VereinController::class)->except(['show'])->parameters(['vereine' => 'verein']);
-    Route::resource('kategorien', KategorieController::class)->except(['show'])->parameters(['kategorien' => 'kategorie']);
+    Route::resource('kategorien', KategorieController::class)->only(['index', 'edit', 'update'])->parameters(['kategorien' => 'kategorie']);
     Route::resource('turniere', AdminTurnierController::class)->parameters(['turniere' => 'turnier']);
 
     Route::get('turniere/{turnier}/export', [ExportController::class, 'download'])->name('turniere.export');
+    Route::post('turniere/{turnier}/rangliste', [RanglisteController::class, 'upload'])->name('turniere.rangliste.upload');
 
     Route::prefix('turniere/{turnier}/kategorien/{kategorie}')->name('turniere.anmeldungen.')->group(function () {
         Route::post('solo', [AdminAnmeldungController::class, 'storeSolo'])->name('solo.store');

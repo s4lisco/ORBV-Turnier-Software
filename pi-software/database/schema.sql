@@ -8,8 +8,11 @@ CREATE TABLE IF NOT EXISTS admin (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- remote_id: kategorie_id aus turnier.orbv.ch (siehe CsvImportService), damit
+-- eine Umbenennung der Kategorie im Admin keine neue Kategorie hier erzeugt.
 CREATE TABLE IF NOT EXISTS kategorien (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    remote_id INTEGER UNIQUE,
     name TEXT NOT NULL,
     typ TEXT NOT NULL CHECK (typ IN ('solo', 'paar', 'formation'))
 );
@@ -32,7 +35,7 @@ CREATE TABLE IF NOT EXISTS teilnehmer (
     geburtsdatum_p2 TEXT,
     anzahl_taenzerinnen INTEGER,
     verein_name TEXT,
-    status TEXT NOT NULL DEFAULT 'aktiv' CHECK (status IN ('aktiv', '-99'))
+    status TEXT NOT NULL DEFAULT 'aktiv' CHECK (status IN ('aktiv', 'dnf'))
 );
 
 CREATE TABLE IF NOT EXISTS runden (

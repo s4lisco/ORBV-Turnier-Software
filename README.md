@@ -61,3 +61,30 @@ In Produktion läuft die Pi-Software offline auf einem Raspberry Pi 3 B+ mit
 nginx + PHP-FPM 8.4 + SQLite (siehe `docs/turnier-plan.md`, Abschnitt 2). Vor
 dem Deployment `npm run build` ausführen und das kompilierte
 `public/css/app.css` mitausliefern.
+
+### Drucker (Startliste & Endrangliste, siehe Plan_Feedback_Umsetzung.md 10.2)
+
+Startliste und Endrangliste werden als normale HTML-Seiten mit `@media print`-
+Styles gerendert; gedruckt wird über den Browser-Druckdialog (Button
+"Drucken" bzw. `window.print()`) – es gibt kein separates PDF-Rendering.
+
+Der USB-Drucker hängt am Pi, bedient wird die Pi-Software aber typischerweise
+von einem anderen Gerät im lokalen Netz (Laptop/Tablet des Turnierbüros) aus
+per Browser. Damit dessen Browser-Druckdialog den am Pi hängenden Drucker
+anbieten kann, muss der Drucker über CUPS im lokalen Netz freigegeben werden:
+
+- Raspberry Pi OS Lite bringt CUPS **nicht** vorinstalliert mit (Headless-Image).
+  Einmalig installieren: `sudo apt install cups printer-driver-all` (deckt die
+  meisten gängigen USB-Drucker über Gutenprint/IPP-Everywhere ab; bei exotischen
+  Modellen ggf. herstellerspezifisches Treiberpaket nötig – vorher mit dem
+  tatsächlichen Druckermodell prüfen).
+- Freigabe für das lokale Netz aktivieren: `sudo cupsctl --share-printers`,
+  Admin-User zur Gruppe `lpadmin` hinzufügen, Drucker unter
+  `http://<pi-ip>:631` oder per `lpadmin` einrichten und als Standard setzen.
+- Anschliessend bindet jedes Gerät im selben Netz den freigegebenen Drucker
+  wie einen normalen Netzwerkdrucker ein (IPP) und kann via Browser-Druckdialog
+  darauf drucken – unabhängig davon, dass er physisch per USB am Pi hängt.
+
+Dies ist eine einmalige Hardware-/Netzwerk-Einrichtung vor Ort und lässt sich
+nicht im Code vorwegnehmen; vor dem ersten Turnier mit dem tatsächlichen
+Drucker-Modell durchtesten.
