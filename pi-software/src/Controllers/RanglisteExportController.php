@@ -9,9 +9,7 @@ use App\Services\CsvExportService;
 use App\View;
 
 /**
- * Neuer, eigenständiger Export für den Rangliste-Upload auf turnier.orbv.ch
- * (Plan_Feedback_Umsetzung.md 9.3) – unabhängig vom bestehenden
- * Ergebnis-Export (ExportController), der unverändert bleibt.
+ * Export für den Rangliste-Upload auf turnier.orbv.ch (Plan_Feedback_Umsetzung.md 9.3).
  */
 final class RanglisteExportController
 {

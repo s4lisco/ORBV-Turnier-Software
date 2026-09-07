@@ -3,13 +3,12 @@
 declare(strict_types=1);
 
 use App\Database;
-use App\Services\CsvExportService;
 use App\Services\CsvImportService;
 use App\Services\RankingService;
 use App\Services\RoundService;
 use App\Services\StartnummerService;
 
-test('Ende-zu-Ende: Import -> Startnummern -> Runden -> Endrangliste -> Export', function () {
+test('Ende-zu-Ende: Import -> Startnummern -> Runden -> Endrangliste', function () {
     $pdo = Database::connection();
 
     // 1. Import
@@ -74,14 +73,6 @@ test('Ende-zu-Ende: Import -> Startnummern -> Runden -> Endrangliste -> Export',
     assertEquals(9, count($ranglisteFortgeschritten));
     assertEquals(1, $ranglisteFortgeschritten[0]['rang']);
     assertEquals([7, 8, 9], array_column(array_slice($ranglisteFortgeschritten, 6), 'rang'));
-
-    // 4. Export
-    $csvPath = (new CsvExportService())->exportAlleKategorien();
-    assertTrue(is_file($csvPath), 'Export-Datei sollte existieren');
-
-    $lines = file($csvPath);
-    // Kopfzeile + 5 (Einsteiger) + 9 (Fortgeschritten: 6 Finalist:innen + 3 Hoffnungsrunden-Ausgeschiedene)
-    assertEquals(1 + 5 + 9, count($lines));
 });
 
 /** Gibt alle Teilnehmer:innen einer Runde frei und bewertet sie mit absteigenden, eindeutigen Punktzahlen. */

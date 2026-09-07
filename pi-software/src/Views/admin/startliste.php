@@ -1,6 +1,6 @@
 <div class="mx-auto max-w-2xl p-6 print:max-w-full print:p-0">
     <div class="mb-4 flex items-center justify-between print:hidden">
-        <a href="/admin/runden/<?= (int) $runde['id'] ?>" class="text-sm text-blue-600 hover:underline">&larr; zurück zur Rundensteuerung</a>
+        <a href="<?= htmlspecialchars($backUrl ?? '/admin/runden/' . (int) $runde['id']) ?>" class="text-sm text-blue-600 hover:underline">&larr; zurück zur Rundensteuerung</a>
         <button type="button" onclick="window.print()" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
             Drucken
         </button>

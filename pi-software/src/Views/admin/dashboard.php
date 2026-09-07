@@ -19,10 +19,6 @@
             <div class="text-2xl">🏆</div>
             <div class="mt-1 text-sm font-medium">Runden</div>
         </a>
-        <a href="/admin/export" class="rounded-xl bg-white p-4 text-center shadow hover:bg-slate-50">
-            <div class="text-2xl">📤</div>
-            <div class="mt-1 text-sm font-medium">Export</div>
-        </a>
         <a href="/admin/rangliste-export" class="rounded-xl bg-white p-4 text-center shadow hover:bg-slate-50">
             <div class="text-2xl">🏁</div>
             <div class="mt-1 text-sm font-medium">Rangliste für turnier.orbv.ch</div>

@@ -111,6 +111,41 @@ final class RoundController
         ], 'Startliste: ' . $runde['kategorie_name'] . ' – ORBV Turnier');
     }
 
+    /** Druckbare Startliste vor dem Start der ersten Runde einer Kategorie (Vorschau anhand Startnummern-Reihenfolge). */
+    public function startlisteVorschau(string $kategorieId): void
+    {
+        Auth::requireAdmin();
+        $roundService = new RoundService();
+
+        $stmt = Database::connection()->prepare('SELECT id, name, typ FROM kategorien WHERE id = :id');
+        $stmt->execute(['id' => $kategorieId]);
+        $kategorie = $stmt->fetch();
+
+        if (!$kategorie) {
+            http_response_code(404);
+            echo 'Kategorie nicht gefunden.';
+            return;
+        }
+
+        $stmt = Database::connection()->prepare(
+            "SELECT id, startnummer, name, name_p2 FROM teilnehmer
+             WHERE kategorie_id = :kategorie_id AND status = 'aktiv'
+             ORDER BY startnummer ASC, id ASC"
+        );
+        $stmt->execute(['kategorie_id' => $kategorieId]);
+        $teilnehmer = $stmt->fetchAll();
+
+        $paarweise = $roundService->tanztPaarweise($kategorie['typ'], $kategorie['name']);
+
+        View::render('admin/startliste', [
+            'runde' => ['id' => null, 'kategorie_name' => $kategorie['name'], 'typ' => 'Vorschau vor Rundenstart'],
+            'backUrl' => '/admin/runden',
+            'teilnehmer' => $teilnehmer,
+            'paarweise' => $paarweise,
+            'gruppen' => array_chunk($teilnehmer, $paarweise ? 2 : 1),
+        ], 'Startliste: ' . $kategorie['name'] . ' – ORBV Turnier');
+    }
+
     public function abschliessen(string $rundeId): void
     {
         Auth::requireAdmin();

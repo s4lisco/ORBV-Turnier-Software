@@ -16,7 +16,6 @@ use App\Auth;
 use App\Router;
 use App\Controllers\AdminAuthController;
 use App\Controllers\DashboardController;
-use App\Controllers\ExportController;
 use App\Controllers\HomeController;
 use App\Controllers\ImportController;
 use App\Controllers\JudgeAdminController;
@@ -59,6 +58,7 @@ $router->post('/admin/judges/generate', [JudgeAdminController::class, 'generate'
 // Rundensteuerung
 $router->get('/admin/runden', [RoundController::class, 'index']);
 $router->post('/admin/runden/{kategorieId}/starten', [RoundController::class, 'starten']);
+$router->get('/admin/kategorien/{kategorieId}/startliste-vorschau', [RoundController::class, 'startlisteVorschau']);
 $router->get('/admin/runden/{rundeId}', [RoundController::class, 'show']);
 $router->get('/admin/runden/{rundeId}/status', [RoundController::class, 'status']);
 $router->get('/admin/runden/{rundeId}/startliste', [RoundController::class, 'startliste']);
@@ -68,8 +68,6 @@ $router->post('/admin/runden/{rundeId}/abbrechen', [RoundController::class, 'abb
 // Ergebnisse & Export
 $router->get('/admin/ergebnisse', [ResultsController::class, 'index']);
 $router->get('/admin/ergebnisse/{kategorieId}', [ResultsController::class, 'show']);
-$router->get('/admin/export', [ExportController::class, 'show']);
-$router->get('/admin/export/download', [ExportController::class, 'download']);
 $router->get('/admin/rangliste-export', [RanglisteExportController::class, 'show']);
 $router->get('/admin/rangliste-export/download', [RanglisteExportController::class, 'download']);
 
