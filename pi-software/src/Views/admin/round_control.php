@@ -1,7 +1,7 @@
 <div class="mx-auto max-w-2xl p-6">
     <a href="/admin/runden" class="text-sm text-blue-600 hover:underline">&larr; zurück zur Übersicht</a>
     <h1 class="mb-1 mt-2 text-2xl font-bold text-slate-800"><?= htmlspecialchars($runde['kategorie_name']) ?></h1>
-    <p class="mb-1 text-sm text-slate-500">Runde: <?= htmlspecialchars($runde['typ']) ?> · Status: <?= htmlspecialchars($runde['status']) ?></p>
+    <p class="mb-1 text-sm text-slate-500">Runde: <?= htmlspecialchars($runde['typ']) ?> · Status: <span id="runden-status"><?= htmlspecialchars($runde['status']) ?></span></p>
     <p class="mb-6 text-sm">
         <a href="/admin/runden/<?= (int) $runde['id'] ?>/startliste" class="text-blue-600 hover:underline">Startliste ansehen &amp; drucken →</a>
     </p>
@@ -10,7 +10,10 @@
         <h2 class="mb-1 text-lg font-semibold text-slate-800">Ablauf</h2>
         <p class="text-sm text-slate-500">
             Die nächste(n) Startnummer(n) werden automatisch für die Wertungsrichter freigegeben,
-            sobald alle 5 die aktuelle(n) Startnummer(n) bewertet haben – kein manueller Schritt nötig.
+            sobald alle 5 die aktuelle(n) Startnummer(n) bewertet haben. Sobald alle Teilnehmer:innen
+            dieser Runde von allen 5 Richtern bewertet wurden, wird die Runde ebenfalls automatisch
+            abgeschlossen – kein manueller Schritt nötig. Nur das Starten der jeweils ersten Runde
+            einer Kategorie erfolgt weiterhin manuell.
         </p>
     </div>
 
@@ -28,7 +31,10 @@
         <div id="live-status"></div>
     </div>
 
-    <form method="post" action="/admin/runden/<?= (int) $runde['id'] ?>/abschliessen" class="mb-3">
+    <p id="abgeschlossen-hinweis" class="mb-3 rounded-lg bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-700 <?= $runde['status'] === 'abgeschlossen' ? '' : 'hidden' ?>">
+        Runde wurde automatisch abgeschlossen, sobald alle 5 Richter fertig waren.
+    </p>
+    <form method="post" action="/admin/runden/<?= (int) $runde['id'] ?>/abschliessen" id="abschliessen-form" class="mb-3 <?= $runde['status'] === 'abgeschlossen' ? 'hidden' : '' ?>">
         <button type="submit" id="abschliessen-button" <?= $kannAbschliessen ? '' : 'disabled' ?>
                 class="w-full rounded-lg px-4 py-3 font-semibold text-white <?= $kannAbschliessen ? 'bg-emerald-600 hover:bg-emerald-700' : 'cursor-not-allowed bg-slate-300' ?>">
             <?= $kannAbschliessen ? 'Runde abschliessen' : 'Runde abschliessen (noch nicht alle bewertet)' ?>
@@ -51,6 +57,7 @@
         const initialLiveStatus = <?= json_encode(array_values($live)) ?>;
         const initialKannAbschliessen = <?= $kannAbschliessen ? 'true' : 'false' ?>;
         const initialKannAbbrechen = <?= $kannAbbrechen ? 'true' : 'false' ?>;
+        const initialRundenStatus = <?= json_encode($runde['status']) ?>;
         let letzterStand = null;
 
         function fluchtHtml(text) {
@@ -92,7 +99,11 @@
                 </table>`;
         }
 
-        function setzeAbschliessenButton(kannAbschliessen) {
+        function setzeAbschliessenButton(kannAbschliessen, rundenStatus) {
+            const istAbgeschlossen = rundenStatus === 'abgeschlossen';
+            document.getElementById('abschliessen-form').classList.toggle('hidden', istAbgeschlossen);
+            document.getElementById('abgeschlossen-hinweis').classList.toggle('hidden', !istAbgeschlossen);
+
             const button = document.getElementById('abschliessen-button');
             button.disabled = !kannAbschliessen;
             button.textContent = kannAbschliessen ? 'Runde abschliessen' : 'Runde abschliessen (noch nicht alle bewertet)';
@@ -122,7 +133,8 @@
                 if (erzwingen || neuerStand !== letzterStand) {
                     letzterStand = neuerStand;
                     zeichneLiveStatus(daten.live);
-                    setzeAbschliessenButton(daten.kannAbschliessen);
+                    document.getElementById('runden-status').textContent = daten.rundenStatus ?? '';
+                    setzeAbschliessenButton(daten.kannAbschliessen, daten.rundenStatus);
                     setzeAbbrechenSichtbarkeit(daten.kannAbbrechen);
                 }
 
@@ -134,7 +146,7 @@
             }
         }
 
-        letzterStand = JSON.stringify({ live: initialLiveStatus, kannAbschliessen: initialKannAbschliessen, kannAbbrechen: initialKannAbbrechen });
+        letzterStand = JSON.stringify({ live: initialLiveStatus, rundenStatus: initialRundenStatus, kannAbschliessen: initialKannAbschliessen, kannAbbrechen: initialKannAbbrechen });
         zeichneLiveStatus(initialLiveStatus);
         document.getElementById('aktualisiert-hinweis').textContent =
             'zuletzt aktualisiert: ' + new Date().toLocaleTimeString('de-CH');

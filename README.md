@@ -22,9 +22,16 @@ Beide Systeme sind unabhängig voneinander per Docker startbar.
 cd public-website
 ./vendor/bin/sail up -d
 ./vendor/bin/sail artisan migrate --seed
+./vendor/bin/sail artisan storage:link
 ./vendor/bin/sail npm install
 ./vendor/bin/sail npm run build
 ```
+
+`artisan storage:link` legt den Symlink `public/storage → storage/app/public`
+an; ohne ihn werden hochgeladene Dateien (z.B. das Vereins-/Verband-Logo unter
+„Header-Einstellungen") zwar gespeichert, aber nicht ausgeliefert (404). Der
+Symlink liegt nicht im Git-Repo (`.gitignore`) und muss daher nach jedem
+frischen Checkout einmalig neu erzeugt werden.
 
 Danach erreichbar unter http://localhost. Beim ersten Aufruf von `/admin`
 führt ein Setup-Wizard einmalig durch die Anlage des Master-Admin-Zugangs

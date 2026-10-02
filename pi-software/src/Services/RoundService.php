@@ -212,6 +212,11 @@ final class RoundService
         $naechste = array_map('intval', array_column($stmt->fetchAll(), 'teilnehmer_id'));
 
         if ($naechste === []) {
+            // Alle Teilnehmer:innen dieser Runde sind freigegeben und von allen
+            // 5 Richtern bewertet – die Runde ist fertig, also automatisch
+            // abschliessen (das Starten der jeweils nächsten Runde bleibt weiterhin
+            // manuell durch den Organisator, siehe RoundController::starten()).
+            $this->rundeAbschliessen($rundeId);
             return;
         }
 
@@ -340,16 +345,23 @@ final class RoundService
     {
         $pdo = Database::connection();
 
-        if (!$this->istRundeVollstaendigBewertet($rundeId)) {
-            throw new RuntimeException('Nicht alle freigegebenen Teilnehmer:innen wurden von allen 5 Richtern bewertet.');
-        }
-
         $stmt = $pdo->prepare('SELECT * FROM runden WHERE id = :id');
         $stmt->execute(['id' => $rundeId]);
         $runde = $stmt->fetch();
 
         if (!$runde) {
             throw new RuntimeException('Runde nicht gefunden.');
+        }
+
+        // Bereits abgeschlossen (z.B. automatisch, sobald alle Richter fertig
+        // waren, siehe pruefeUndFreigebenNaechste()) – nichts mehr zu tun, damit
+        // ein zusätzlicher manueller Klick keine Folgerunden doppelt anlegt.
+        if ($runde['status'] === 'abgeschlossen') {
+            return;
+        }
+
+        if (!$this->istRundeVollstaendigBewertet($rundeId)) {
+            throw new RuntimeException('Nicht alle freigegebenen Teilnehmer:innen wurden von allen 5 Richtern bewertet.');
         }
 
         $ergebnisse = $this->ergebnisseFuerRunde($rundeId);

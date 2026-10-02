@@ -63,7 +63,7 @@ final class RoundController
         View::render('admin/round_control', [
             'runde' => $runde,
             'live' => $roundService->liveStatusFuerRunde((int) $rundeId),
-            'kannAbschliessen' => $roundService->istRundeVollstaendigBewertet((int) $rundeId),
+            'kannAbschliessen' => $runde['status'] === 'laufend' && $roundService->istRundeVollstaendigBewertet((int) $rundeId),
             'kannAbbrechen' => $roundService->kannRundeAbbrechen((int) $rundeId),
         ], 'Rundensteuerung – ORBV Turnier');
     }
@@ -74,10 +74,15 @@ final class RoundController
         Auth::requireAdmin();
         $roundService = new RoundService();
 
+        $stmt = Database::connection()->prepare('SELECT status FROM runden WHERE id = :id');
+        $stmt->execute(['id' => $rundeId]);
+        $runde = $stmt->fetch();
+
         header('Content-Type: application/json');
         echo json_encode([
             'live' => array_values($roundService->liveStatusFuerRunde((int) $rundeId)),
-            'kannAbschliessen' => $roundService->istRundeVollstaendigBewertet((int) $rundeId),
+            'rundenStatus' => $runde['status'] ?? null,
+            'kannAbschliessen' => ($runde['status'] ?? null) === 'laufend' && $roundService->istRundeVollstaendigBewertet((int) $rundeId),
             'kannAbbrechen' => $roundService->kannRundeAbbrechen((int) $rundeId),
         ]);
     }
