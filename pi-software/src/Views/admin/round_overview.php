@@ -27,11 +27,14 @@
                 <?php elseif ($kategorie['laufende_runde_id']): ?>
                     <a href="/admin/runden/<?= (int) $kategorie['laufende_runde_id'] ?>" class="text-sm font-semibold text-blue-600 hover:underline">Laufende Runde steuern →</a>
                 <?php elseif ($kategorie['naechste_runde_id']): ?>
-                    <form method="post" action="/admin/runden/<?= (int) $kategorie['naechste_runde_id'] ?>/naechste-starten">
-                        <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                            Nächste Runde starten
-                        </button>
-                    </form>
+                    <div class="flex items-center gap-3">
+                        <a href="/admin/runden/<?= (int) $kategorie['naechste_runde_id'] ?>/startliste" class="text-sm text-blue-600 hover:underline">Startliste ansehen &amp; drucken →</a>
+                        <form method="post" action="/admin/runden/<?= (int) $kategorie['naechste_runde_id'] ?>/naechste-starten">
+                            <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                                Nächste Runde starten
+                            </button>
+                        </form>
+                    </div>
                 <?php else: ?>
                     <a href="/admin/ergebnisse/<?= (int) $kategorie['id'] ?>" class="text-sm text-blue-600 hover:underline">Ergebnisse ansehen →</a>
                 <?php endif; ?>

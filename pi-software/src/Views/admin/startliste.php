@@ -28,7 +28,10 @@
                         <td class="py-2 align-top font-semibold"><?= $i + 1 ?></td>
                         <td class="py-2">
                             <?php foreach ($gruppe as $t): ?>
-                                <div>#<?= $t['startnummer'] !== null ? (int) $t['startnummer'] : '–' ?> – <?= htmlspecialchars($t['name']) ?><?= $t['name_p2'] ? ' &amp; ' . htmlspecialchars($t['name_p2']) : '' ?></div>
+                                <div>
+                                    #<?= $t['startnummer'] !== null ? (int) $t['startnummer'] : '–' ?> – <?= htmlspecialchars($t['name']) ?><?= $t['name_p2'] ? ' &amp; ' . htmlspecialchars($t['name_p2']) : '' ?>
+                                    <?= !empty($t['verein_name']) ? ' <span class="text-slate-500">(' . htmlspecialchars($t['verein_name']) . ')</span>' : '' ?>
+                                </div>
                             <?php endforeach; ?>
                         </td>
                     </tr>
@@ -42,6 +45,7 @@
                     <th class="py-2">#</th>
                     <th class="py-2">Startnummer</th>
                     <th class="py-2">Name</th>
+                    <th class="py-2">Verein</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -50,6 +54,7 @@
                         <td class="py-2"><?= $i + 1 ?></td>
                         <td class="py-2">#<?= $t['startnummer'] !== null ? (int) $t['startnummer'] : '–' ?></td>
                         <td class="py-2"><?= htmlspecialchars($t['name']) ?><?= $t['name_p2'] ? ' &amp; ' . htmlspecialchars($t['name_p2']) : '' ?></td>
+                        <td class="py-2"><?= !empty($t['verein_name']) ? htmlspecialchars($t['verein_name']) : '–' ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>

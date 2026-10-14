@@ -12,6 +12,15 @@
     <?php if (empty($rangliste)): ?>
         <p class="rounded-2xl bg-white p-6 text-center text-slate-500 shadow">Noch keine Endrangliste verfügbar.</p>
     <?php else: ?>
+        <?php
+            $kriteriumsNamen = [];
+            foreach ($rangliste as $eintrag) {
+                if (!empty($eintrag['kriterien'])) {
+                    $kriteriumsNamen = array_keys($eintrag['kriterien']);
+                    break;
+                }
+            }
+        ?>
         <table class="w-full rounded-2xl bg-white text-left text-sm shadow print:rounded-none print:shadow-none">
             <thead>
             <tr class="border-b text-slate-500">
@@ -19,6 +28,9 @@
                 <th class="px-4 py-3">Startnummer</th>
                 <th class="px-4 py-3">Name</th>
                 <th class="px-4 py-3">Verein</th>
+                <?php foreach ($kriteriumsNamen as $name): ?>
+                    <th class="px-4 py-3"><?= htmlspecialchars($name) ?></th>
+                <?php endforeach; ?>
                 <th class="px-4 py-3">Gesamt</th>
             </tr>
             </thead>
@@ -30,7 +42,10 @@
                     <td class="px-4 py-3">#<?= $t ? (int) $t['startnummer'] : '?' ?></td>
                     <td class="px-4 py-3"><?= $t ? htmlspecialchars($t['name']) . ($t['name_p2'] ? ' &amp; ' . htmlspecialchars($t['name_p2']) : '') : '?' ?></td>
                     <td class="px-4 py-3"><?= $t && $t['verein_name'] ? htmlspecialchars($t['verein_name']) : '–' ?></td>
-                    <td class="px-4 py-3"><?= $eintrag['gesamt'] ?? 'nicht getanzt' ?></td>
+                    <?php foreach ($kriteriumsNamen as $name): ?>
+                        <td class="px-4 py-3"><?= $eintrag['kriterien'][$name] ?? '–' ?></td>
+                    <?php endforeach; ?>
+                    <td class="px-4 py-3 font-semibold"><?= $eintrag['gesamt'] ?? 'nicht getanzt' ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

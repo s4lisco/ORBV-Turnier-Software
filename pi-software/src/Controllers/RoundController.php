@@ -151,7 +151,7 @@ final class RoundController
         }
 
         $stmt = Database::connection()->prepare(
-            "SELECT id, startnummer, name, name_p2 FROM teilnehmer
+            "SELECT id, startnummer, name, name_p2, verein_name FROM teilnehmer
              WHERE kategorie_id = :kategorie_id AND status = 'aktiv'
              ORDER BY startnummer ASC, id ASC"
         );

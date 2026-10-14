@@ -72,6 +72,8 @@ final class RankingService
         if (isset($byTyp['final1']) && isset($byTyp['final2'])) {
             $erg1 = $roundService->ergebnisseFuerRunde($byTyp['final1']);
             $erg2 = $roundService->ergebnisseFuerRunde($byTyp['final2']);
+            $kriterien1 = $roundService->kriteriumsErgebnisseFuerRunde($byTyp['final1']);
+            $kriterien2 = $roundService->kriteriumsErgebnisseFuerRunde($byTyp['final2']);
 
             $kombiniert = [];
             $alleIds = array_unique(array_merge(array_keys($erg1), array_keys($erg2)));
@@ -83,11 +85,26 @@ final class RankingService
                     : round(($g1 + $g2) / 2, 1);
             }
 
-            return $this->rangliste($kombiniert);
+            $rangliste = $this->rangliste($kombiniert);
+            foreach ($rangliste as &$eintrag) {
+                $eintrag['kriterien'] = $this->kombiniereKriterien(
+                    $kriterien1[$eintrag['teilnehmer_id']] ?? [],
+                    $kriterien2[$eintrag['teilnehmer_id']] ?? []
+                );
+            }
+            unset($eintrag);
+
+            return $rangliste;
         }
 
         if (isset($byTyp['final'])) {
+            $kriterienFinal = $roundService->kriteriumsErgebnisseFuerRunde($byTyp['final']);
             $finalRangliste = $this->rangliste($roundService->ergebnisseFuerRunde($byTyp['final']));
+            foreach ($finalRangliste as &$eintrag) {
+                $eintrag['kriterien'] = $kriterienFinal[$eintrag['teilnehmer_id']] ?? [];
+            }
+            unset($eintrag);
+
             $ausgeschiedene = $this->hoffnungsrundeAusgeschiedene($kategorieId, $byTyp['final'], $roundService);
 
             // Hoffnungsrunden-Ausgeschiedene stehen zuunterst, mit fortlaufenden
@@ -133,12 +150,39 @@ final class RankingService
         );
 
         $ergebnisseHoffnungsrunde = $roundService->ergebnisseFuerRunde((int) $hoffnungsrunde['id']);
+        $kriterienHoffnungsrunde = $roundService->kriteriumsErgebnisseFuerRunde((int) $hoffnungsrunde['id']);
         $ausgeschiedeneErgebnisse = array_filter(
             $ergebnisseHoffnungsrunde,
             fn ($wert, $teilnehmerId) => !in_array($teilnehmerId, $finalTeilnehmerIds, true),
             ARRAY_FILTER_USE_BOTH
         );
 
-        return $this->rangliste($ausgeschiedeneErgebnisse);
+        $rangliste = $this->rangliste($ausgeschiedeneErgebnisse);
+        foreach ($rangliste as &$eintrag) {
+            $eintrag['kriterien'] = $kriterienHoffnungsrunde[$eintrag['teilnehmer_id']] ?? [];
+        }
+        unset($eintrag);
+
+        return $rangliste;
+    }
+
+    /**
+     * Kombiniert die Kriteriums-Durchschnitte aus zwei Runden (Final1/Final2)
+     * zum Mittelwert je Kriterium, analog zur Gesamtpunktzahl-Kombination.
+     *
+     * @param array<string, ?float> $k1
+     * @param array<string, ?float> $k2
+     * @return array<string, ?float>
+     */
+    private function kombiniereKriterien(array $k1, array $k2): array
+    {
+        $kombiniert = [];
+        foreach (array_unique(array_merge(array_keys($k1), array_keys($k2))) as $name) {
+            $w1 = $k1[$name] ?? null;
+            $w2 = $k2[$name] ?? null;
+            $kombiniert[$name] = ($w1 === null || $w2 === null) ? null : round(($w1 + $w2) / 2, 1);
+        }
+
+        return $kombiniert;
     }
 }

@@ -87,7 +87,7 @@ final class RoundService
     public function alleTeilnehmerFuerRunde(int $rundeId): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT t.id, t.startnummer, t.name, t.name_p2
+            'SELECT t.id, t.startnummer, t.name, t.name_p2, t.verein_name
              FROM runde_teilnehmer rt
              JOIN teilnehmer t ON t.id = rt.teilnehmer_id
              WHERE rt.runde_id = :runde_id
@@ -294,6 +294,18 @@ final class RoundService
     /** @return array<int, float|null> teilnehmer_id => Gesamtpunktzahl dieser Runde (null für dnf) */
     public function ergebnisseFuerRunde(int $rundeId): array
     {
+        return array_map(fn ($e) => $e['gesamt'], $this->ergebnisseDetailFuerRunde($rundeId));
+    }
+
+    /** @return array<int, array<string, ?float>> teilnehmer_id => [kriteriumsname => Durchschnitt dieser Runde] (leer bei dnf) */
+    public function kriteriumsErgebnisseFuerRunde(int $rundeId): array
+    {
+        return array_map(fn ($e) => $e['kriterien'], $this->ergebnisseDetailFuerRunde($rundeId));
+    }
+
+    /** @return array<int, array{gesamt: ?float, kriterien: array<string, float>}> */
+    private function ergebnisseDetailFuerRunde(int $rundeId): array
+    {
         $pdo = Database::connection();
         $scoring = new ScoringService();
 
@@ -311,30 +323,36 @@ final class RoundService
             $teilnehmerId = (int) $t['teilnehmer_id'];
 
             if ($t['status'] === 'dnf') {
-                $ergebnisse[$teilnehmerId] = null;
+                $ergebnisse[$teilnehmerId] = ['gesamt' => null, 'kriterien' => []];
                 continue;
             }
 
-            $kStmt = $pdo->prepare('SELECT id FROM kriterien WHERE kategorie_id = :kategorie_id ORDER BY id');
+            $kStmt = $pdo->prepare('SELECT id, name FROM kriterien WHERE kategorie_id = :kategorie_id ORDER BY id');
             $kStmt->execute(['kategorie_id' => $t['kategorie_id']]);
-            $kriterienIds = array_column($kStmt->fetchAll(), 'id');
+            $kriterien = $kStmt->fetchAll();
 
             $kriteriumsDurchschnitte = [];
-            foreach ($kriterienIds as $kriteriumId) {
+            $kriteriumsWerte = [];
+            foreach ($kriterien as $kriterium) {
                 $pStmt = $pdo->prepare(
                     'SELECT punkte FROM bewertungen WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id AND kriterium_id = :kriterium_id'
                 );
-                $pStmt->execute(['runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId, 'kriterium_id' => $kriteriumId]);
+                $pStmt->execute(['runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId, 'kriterium_id' => $kriterium['id']]);
                 $werte = array_map('floatval', array_column($pStmt->fetchAll(), 'punkte'));
 
                 if (count($werte) !== self::ANZAHL_RICHTER) {
-                    throw new RuntimeException("Teilnehmer:in $teilnehmerId ist für Kriterium $kriteriumId noch nicht vollständig bewertet.");
+                    throw new RuntimeException("Teilnehmer:in $teilnehmerId ist für Kriterium {$kriterium['id']} noch nicht vollständig bewertet.");
                 }
 
-                $kriteriumsDurchschnitte[] = $scoring->berechneKriteriumsDurchschnitt($werte);
+                $durchschnitt = $scoring->berechneKriteriumsDurchschnitt($werte);
+                $kriteriumsDurchschnitte[] = $durchschnitt;
+                $kriteriumsWerte[$kriterium['name']] = $durchschnitt;
             }
 
-            $ergebnisse[$teilnehmerId] = $scoring->berechneRundenGesamt($kriteriumsDurchschnitte);
+            $ergebnisse[$teilnehmerId] = [
+                'gesamt' => $scoring->berechneRundenGesamt($kriteriumsDurchschnitte),
+                'kriterien' => $kriteriumsWerte,
+            ];
         }
 
         return $ergebnisse;
