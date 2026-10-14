@@ -41,7 +41,7 @@ final class ResultsController
         if ($rangliste !== []) {
             $ids = array_map(fn ($r) => (int) $r['teilnehmer_id'], $rangliste);
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $stmt = $pdo->prepare("SELECT id, startnummer, name, name_p2 FROM teilnehmer WHERE id IN ($placeholders)");
+            $stmt = $pdo->prepare("SELECT id, startnummer, name, name_p2, verein_name FROM teilnehmer WHERE id IN ($placeholders)");
             $stmt->execute($ids);
             foreach ($stmt->fetchAll() as $t) {
                 $teilnehmerNamen[(int) $t['id']] = $t;

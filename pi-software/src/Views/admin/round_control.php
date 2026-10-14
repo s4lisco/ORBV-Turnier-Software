@@ -11,9 +11,9 @@
         <p class="text-sm text-slate-500">
             Die nächste(n) Startnummer(n) werden automatisch für die Wertungsrichter freigegeben,
             sobald alle 5 die aktuelle(n) Startnummer(n) bewertet haben. Sobald alle Teilnehmer:innen
-            dieser Runde von allen 5 Richtern bewertet wurden, wird die Runde ebenfalls automatisch
-            abgeschlossen – kein manueller Schritt nötig. Nur das Starten der jeweils ersten Runde
-            einer Kategorie erfolgt weiterhin manuell.
+            dieser Runde von allen 5 Richtern bewertet wurden, wird die Runde automatisch abgeschlossen.
+            Die jeweils nächste Runde (z.B. final2, Hoffnungsrunde oder Finale) muss danach vom
+            Organisator in der Rundenübersicht manuell gestartet werden.
         </p>
     </div>
 

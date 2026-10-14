@@ -369,12 +369,42 @@ final class RoundService
         $update = $pdo->prepare("UPDATE runden SET status = 'abgeschlossen' WHERE id = :id");
         $update->execute(['id' => $rundeId]);
 
+        // final2 ist bereits beim Start der Kategorie als 'offen' angelegt worden
+        // (siehe starteErsteRunde()) – wird hier bewusst NICHT automatisch
+        // aktiviert, der Organisator muss jede Runde manuell starten (siehe
+        // starteNaechsteRunde()).
         match ($runde['typ']) {
-            'final1' => $this->aktiviereRunde((int) $runde['kategorie_id'], 'final2'),
             'vorrunde' => $this->nachVorrunde((int) $runde['kategorie_id'], $ergebnisse),
             'hoffnungsrunde' => $this->nachHoffnungsrunde((int) $runde['kategorie_id'], $ergebnisse),
             default => null,
         };
+    }
+
+    /**
+     * Startet eine bereits angelegte, aber noch nicht gestartete Runde (status
+     * 'offen') – z.B. final2, oder die Hoffnungsrunde/das Finale, nachdem die
+     * jeweilige Vorgänger-Runde automatisch abgeschlossen wurde. Das Starten
+     * jeder einzelnen Runde ist bewusst ein manueller Schritt des Organisators,
+     * es gibt keine automatische Weiterschaltung.
+     */
+    public function starteNaechsteRunde(int $rundeId): void
+    {
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare('SELECT * FROM runden WHERE id = :id');
+        $stmt->execute(['id' => $rundeId]);
+        $runde = $stmt->fetch();
+
+        if (!$runde) {
+            throw new RuntimeException('Runde nicht gefunden.');
+        }
+
+        if ($runde['status'] !== 'offen') {
+            throw new RuntimeException('Diese Runde kann nicht gestartet werden (Status: ' . $runde['status'] . ').');
+        }
+
+        $pdo->prepare("UPDATE runden SET status = 'laufend' WHERE id = :id")->execute(['id' => $rundeId]);
+        $this->pruefeUndFreigebenNaechste($rundeId);
     }
 
     /**
@@ -461,9 +491,8 @@ final class RoundService
         $direkteIds = array_map(fn ($r) => (int) $r['teilnehmer_id'], $direkte);
 
         if (count($rest) === 0) {
-            $finalId = $this->insertRunde($kategorieId, 'final', 'laufend', 2);
+            $finalId = $this->insertRunde($kategorieId, 'final', 'offen', 2);
             $this->setRundeTeilnehmer($finalId, $direkteIds);
-            $this->pruefeUndFreigebenNaechste($finalId);
             return;
         }
 
@@ -472,13 +501,11 @@ final class RoundService
         // Vorrunden-Ranglisten-Reihenfolge (Plan_Feedback_Umsetzung.md 12.2).
         shuffle($restIds);
 
-        $hoffnungsrundeId = $this->insertRunde($kategorieId, 'hoffnungsrunde', 'laufend', 2);
+        $hoffnungsrundeId = $this->insertRunde($kategorieId, 'hoffnungsrunde', 'offen', 2);
         $this->setRundeTeilnehmer($hoffnungsrundeId, $restIds);
 
         $finalId = $this->insertRunde($kategorieId, 'final', 'offen', 3);
         $this->setRundeTeilnehmer($finalId, $direkteIds);
-
-        $this->pruefeUndFreigebenNaechste($hoffnungsrundeId);
     }
 
     private function nachHoffnungsrunde(int $kategorieId, array $ergebnisse): void
@@ -509,26 +536,6 @@ final class RoundService
         foreach ($qualifizierte as $r) {
             $reihenfolge++;
             $insert->execute(['runde_id' => $finalId, 'teilnehmer_id' => $r['teilnehmer_id'], 'reihenfolge' => $reihenfolge]);
-        }
-
-        $pdo->prepare("UPDATE runden SET status = 'laufend' WHERE id = :id")->execute(['id' => $finalId]);
-        $this->pruefeUndFreigebenNaechste($finalId);
-    }
-
-    private function aktiviereRunde(int $kategorieId, string $typ): void
-    {
-        $pdo = Database::connection();
-        $stmt = $pdo->prepare(
-            "UPDATE runden SET status = 'laufend' WHERE kategorie_id = :kategorie_id AND typ = :typ"
-        );
-        $stmt->execute(['kategorie_id' => $kategorieId, 'typ' => $typ]);
-
-        $stmt = $pdo->prepare('SELECT id FROM runden WHERE kategorie_id = :kategorie_id AND typ = :typ');
-        $stmt->execute(['kategorie_id' => $kategorieId, 'typ' => $typ]);
-        $rundeId = $stmt->fetch()['id'] ?? null;
-
-        if ($rundeId !== null) {
-            $this->pruefeUndFreigebenNaechste((int) $rundeId);
         }
     }
 

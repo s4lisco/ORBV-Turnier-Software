@@ -18,6 +18,7 @@
                 <th class="px-4 py-3">Rang</th>
                 <th class="px-4 py-3">Startnummer</th>
                 <th class="px-4 py-3">Name</th>
+                <th class="px-4 py-3">Verein</th>
                 <th class="px-4 py-3">Gesamt</th>
             </tr>
             </thead>
@@ -28,6 +29,7 @@
                     <td class="px-4 py-3 font-semibold"><?= $eintrag['rang'] === null ? 'DNF' : $eintrag['rang'] ?></td>
                     <td class="px-4 py-3">#<?= $t ? (int) $t['startnummer'] : '?' ?></td>
                     <td class="px-4 py-3"><?= $t ? htmlspecialchars($t['name']) . ($t['name_p2'] ? ' &amp; ' . htmlspecialchars($t['name_p2']) : '') : '?' ?></td>
+                    <td class="px-4 py-3"><?= $t && $t['verein_name'] ? htmlspecialchars($t['verein_name']) : '–' ?></td>
                     <td class="px-4 py-3"><?= $eintrag['gesamt'] ?? 'nicht getanzt' ?></td>
                 </tr>
             <?php endforeach; ?>

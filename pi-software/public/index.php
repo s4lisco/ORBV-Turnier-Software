@@ -58,6 +58,7 @@ $router->post('/admin/judges/generate', [JudgeAdminController::class, 'generate'
 // Rundensteuerung
 $router->get('/admin/runden', [RoundController::class, 'index']);
 $router->post('/admin/runden/{kategorieId}/starten', [RoundController::class, 'starten']);
+$router->post('/admin/runden/{rundeId}/naechste-starten', [RoundController::class, 'naechsteStarten']);
 $router->get('/admin/kategorien/{kategorieId}/startliste-vorschau', [RoundController::class, 'startlisteVorschau']);
 $router->get('/admin/runden/{rundeId}', [RoundController::class, 'show']);
 $router->get('/admin/runden/{rundeId}/status', [RoundController::class, 'status']);
