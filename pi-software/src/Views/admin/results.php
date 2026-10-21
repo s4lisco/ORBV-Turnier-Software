@@ -37,15 +37,15 @@
             <tbody>
             <?php foreach ($rangliste as $eintrag): ?>
                 <?php $t = $teilnehmerNamen[$eintrag['teilnehmer_id']] ?? null; ?>
-                <tr class="border-b<?= $eintrag['rang'] === null ? ' text-slate-400' : '' ?>">
-                    <td class="px-4 py-3 font-semibold"><?= $eintrag['rang'] === null ? 'DNF' : $eintrag['rang'] ?></td>
+                <tr class="border-b">
+                    <td class="px-4 py-3 font-semibold"><?= $eintrag['rang'] ?></td>
                     <td class="px-4 py-3">#<?= $t ? (int) $t['startnummer'] : '?' ?></td>
                     <td class="px-4 py-3"><?= $t ? htmlspecialchars($t['name']) . ($t['name_p2'] ? ' &amp; ' . htmlspecialchars($t['name_p2']) : '') : '?' ?></td>
                     <td class="px-4 py-3"><?= $t && $t['verein_name'] ? htmlspecialchars($t['verein_name']) : '–' ?></td>
                     <?php foreach ($kriteriumsNamen as $name): ?>
                         <td class="px-4 py-3"><?= $eintrag['kriterien'][$name] ?? '–' ?></td>
                     <?php endforeach; ?>
-                    <td class="px-4 py-3 font-semibold"><?= $eintrag['gesamt'] ?? 'nicht getanzt' ?></td>
+                    <td class="px-4 py-3 font-semibold"><?= $eintrag['gesamt'] ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

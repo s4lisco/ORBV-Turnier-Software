@@ -17,7 +17,7 @@ test('tanztPaarweise: Solo/Paartanz Einsteiger paarweise, andere Kategorien nich
     assertEquals(false, $roundService->tanztPaarweise('formation', 'Formation Einsteiger'));
 });
 
-test('alleTeilnehmerFuerRunde: liefert vollständige Startliste in Reihenfolge, unabhängig vom Freigabe-Status', function () {
+test('alleTeilnehmerFuerRunde: liefert vollständige Startliste, unabhängig vom Freigabe-Status', function () {
     $kategorieId = orbv_seed_kategorie('Solo Dance Einsteiger', 'solo', ['Tanz']);
     $teilnehmerIds = orbv_seed_teilnehmer($kategorieId, 4);
 
@@ -29,7 +29,13 @@ test('alleTeilnehmerFuerRunde: liefert vollständige Startliste in Reihenfolge, 
 
     $startliste = $roundService->alleTeilnehmerFuerRunde($rundeId);
     assertEquals(4, count($startliste));
-    assertEquals($teilnehmerIds, array_column($startliste, 'id'));
+    // Reihenfolge ist seit Feedback-Runde 2 immer zufällig, daher nur Mengen-
+    // gleichheit prüfen statt exakter Reihenfolge.
+    $sortiert = array_column($startliste, 'id');
+    sort($sortiert);
+    $erwartet = $teilnehmerIds;
+    sort($erwartet);
+    assertEquals($erwartet, $sortiert);
 
     $gruppen = array_chunk($startliste, 2);
     assertEquals(2, count($gruppen));

@@ -62,10 +62,19 @@
         </div>
 
         @forelse ($turnier->turnierKategorien as $turnierKategorie)
-            @php $kategorie = $turnierKategorie->kategorie; @endphp
+            @php
+                $kategorie = $turnierKategorie->kategorie;
+                $anzahlPersonen = match ($kategorie->typ) {
+                    'solo' => $turnierKategorie->anmeldungenSolo->count(),
+                    'paar' => $turnierKategorie->anmeldungenPaar->count() * 2,
+                    'formation' => (int) $turnierKategorie->anmeldungenFormation->sum('anzahl_taenzerinnen'),
+                    default => 0,
+                };
+            @endphp
             <div class="mb-6 rounded-2xl bg-white p-6 shadow">
                 <h2 class="mb-4 text-lg font-semibold text-slate-800">
                     {{ $kategorie->name }} <span class="text-slate-400">({{ $kategorie->typ }})</span>
+                    <span class="text-sm font-normal text-slate-500">– {{ $anzahlPersonen }} Personen</span>
                 </h2>
 
                 @if ($kategorie->typ === 'solo')

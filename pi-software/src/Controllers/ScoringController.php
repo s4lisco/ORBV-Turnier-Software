@@ -61,13 +61,17 @@ final class ScoringController
 
         $punkteInput = $_POST['punkte'] ?? [];
         $nichtGetanztInput = $_POST['nicht_getanzt'] ?? [];
+        $fehlerInput = $_POST['fehler'] ?? [];
+        $erlaubteFehlerWerte = [0.0, -1.0, -5.0, -10.0];
 
         $zuSpeichern = [];
+        $fehlerZuSpeichern = [];
         foreach ($erwarteteTeilnehmerIds as $teilnehmerId) {
             $istDnf = ($nichtGetanztInput[$teilnehmerId] ?? '0') === '1';
 
             if ($istDnf) {
                 $zuSpeichern[$teilnehmerId] = array_fill_keys($kriterienIds, 0.0);
+                $fehlerZuSpeichern[$teilnehmerId] = [];
                 continue;
             }
 
@@ -81,11 +85,25 @@ final class ScoringController
                 $werte[$kriteriumId] = (float) $wert;
             }
             $zuSpeichern[$teilnehmerId] = $werte;
+
+            $fehlerWerte = [];
+            foreach ((array) ($fehlerInput[$teilnehmerId] ?? []) as $fehlerWert) {
+                if (!is_numeric($fehlerWert) || !in_array((float) $fehlerWert, $erlaubteFehlerWerte, true)) {
+                    $this->renderAufgabe($aufgabe, 'Ungültiger Fehler-Wert (erlaubt sind 0, -1, -5, -10).');
+                    return;
+                }
+                $fehlerWerte[] = (float) $fehlerWert;
+            }
+            $fehlerZuSpeichern[$teilnehmerId] = $fehlerWerte;
         }
 
         $insert = $pdo->prepare(
             'INSERT INTO bewertungen (runde_id, teilnehmer_id, wertungsrichter_id, kriterium_id, punkte)
              VALUES (:runde_id, :teilnehmer_id, :wertungsrichter_id, :kriterium_id, :punkte)'
+        );
+        $insertFehler = $pdo->prepare(
+            'INSERT INTO fehler_eintraege (runde_id, teilnehmer_id, wertungsrichter_id, wert)
+             VALUES (:runde_id, :teilnehmer_id, :wertungsrichter_id, :wert)'
         );
         $updateStatus = $pdo->prepare("UPDATE teilnehmer SET status = 'dnf' WHERE id = :id");
 
@@ -98,6 +116,14 @@ final class ScoringController
                     'wertungsrichter_id' => $judgeId,
                     'kriterium_id' => $kriteriumId,
                     'punkte' => $punkte,
+                ]);
+            }
+            foreach ($fehlerZuSpeichern[$teilnehmerId] ?? [] as $fehlerWert) {
+                $insertFehler->execute([
+                    'runde_id' => $rundeId,
+                    'teilnehmer_id' => $teilnehmerId,
+                    'wertungsrichter_id' => $judgeId,
+                    'wert' => $fehlerWert,
                 ]);
             }
             if (($nichtGetanztInput[$teilnehmerId] ?? '0') === '1') {

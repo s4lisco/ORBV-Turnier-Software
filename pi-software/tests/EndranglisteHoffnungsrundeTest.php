@@ -6,7 +6,7 @@ use App\Database;
 use App\Services\RankingService;
 use App\Services\RoundService;
 
-test('Endrangliste: Hoffnungsrunden-Ausgeschiedene zuunterst, sortiert nach Hoffnungsrunden-Punktzahl (Plan_Feedback_Umsetzung.md 12.4)', function () {
+test('Endrangliste: Hoffnungsrunden-Ausgeschiedene zuunterst mit gemeinsamem Rang, Anzeige-Reihenfolge weiterhin nach Hoffnungsrunden-Punktzahl (Feedback-Runde 2, überschreibt Plan_Feedback_Umsetzung.md 12.4)', function () {
     $kategorieId = orbv_seed_kategorie('Solo Test', 'solo', ['Tanz']);
     $teilnehmerIds = orbv_seed_teilnehmer($kategorieId, 9);
     $richterIds = orbv_seed_richter();
@@ -67,5 +67,6 @@ test('Endrangliste: Hoffnungsrunden-Ausgeschiedene zuunterst, sortiert nach Hoff
 
     $ausgeschiedeneEintraege = array_slice($rangliste, 6);
     assertEquals($erwarteteAusgeschiedeneReihenfolge, array_column($ausgeschiedeneEintraege, 'teilnehmer_id'));
-    assertEquals([7, 8, 9], array_column($ausgeschiedeneEintraege, 'rang'));
+    // Alle Hoffnungsrunden-Ausgeschiedenen erhalten denselben Rang (Feedback-Runde 2).
+    assertEquals([7, 7, 7], array_column($ausgeschiedeneEintraege, 'rang'));
 });

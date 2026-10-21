@@ -32,6 +32,23 @@
                                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-lg focus:border-emerald-500 focus:outline-none">
                             </div>
                         <?php endforeach; ?>
+
+                        <div class="rounded-lg border border-slate-200 p-3 fehler-feld">
+                            <label class="mb-1 block text-sm font-medium text-slate-700">Fehler (Minuspunkte)</label>
+                            <div class="mb-2 flex gap-2">
+                                <select class="fehler-auswahl rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+                                    <option value="0">0</option>
+                                    <option value="-1">-1</option>
+                                    <option value="-5">-5</option>
+                                    <option value="-10">-10</option>
+                                </select>
+                                <button type="button" class="rounded-lg bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-300" onclick="fehlerHinzufuegen(this, <?= (int) $t['id'] ?>)">
+                                    + hinzufügen
+                                </button>
+                            </div>
+                            <div class="fehler-liste space-y-1 text-sm"></div>
+                            <p class="mt-1 text-sm font-semibold text-red-600">Summe: <span class="fehler-summe">0</span></p>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -56,5 +73,42 @@
             feld.disabled = checkbox.checked;
             feld.closest('div').classList.toggle('opacity-40', checkbox.checked);
         });
+
+        const fehlerFeld = block.querySelector('.fehler-feld');
+        fehlerFeld.classList.toggle('opacity-40', checkbox.checked);
+        fehlerFeld.querySelectorAll('select, button').forEach((el) => {
+            el.disabled = checkbox.checked;
+        });
+    }
+
+    function fehlerHinzufuegen(button, teilnehmerId) {
+        const feld = button.closest('.fehler-feld');
+        const auswahl = feld.querySelector('.fehler-auswahl');
+        const wert = auswahl.value;
+
+        const zeile = document.createElement('div');
+        zeile.className = 'flex items-center justify-between rounded bg-slate-100 px-2 py-1 fehler-eintrag';
+        zeile.dataset.wert = wert;
+        zeile.innerHTML = `
+            <span>${wert}</span>
+            <input type="hidden" name="fehler[${teilnehmerId}][]" value="${wert}">
+            <button type="button" class="text-xs text-slate-500 hover:underline">entfernen</button>
+        `;
+        zeile.querySelector('button').addEventListener('click', () => {
+            zeile.remove();
+            fehlerSummeAktualisieren(feld);
+        });
+
+        feld.querySelector('.fehler-liste').appendChild(zeile);
+        fehlerSummeAktualisieren(feld);
+    }
+
+    function fehlerSummeAktualisieren(feld) {
+        const eintraege = feld.querySelectorAll('.fehler-eintrag');
+        let summe = 0;
+        eintraege.forEach((eintrag) => {
+            summe += parseFloat(eintrag.dataset.wert);
+        });
+        feld.querySelector('.fehler-summe').textContent = summe;
     }
 </script>

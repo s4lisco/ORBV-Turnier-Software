@@ -46,6 +46,11 @@ final class RoundService
             throw new RuntimeException('Bitte zuerst im Dashboard die Startnummern vergeben, bevor die Runde gestartet wird.');
         }
 
+        // Startliste ist immer zufällig (nicht nach Startnummer sortiert), siehe
+        // Feedback-Runde 2. final2 bleibt dabei die umgekehrte Reihenfolge von
+        // final1, daher wird hier einmal gemischt und für final2 nur gespiegelt.
+        shuffle($teilnehmerIds);
+
         if (count($teilnehmerIds) <= 6) {
             $final1Id = $this->insertRunde($kategorieId, 'final1', 'laufend', 1);
             $this->setRundeTeilnehmer($final1Id, $teilnehmerIds);
@@ -96,6 +101,31 @@ final class RoundService
         $stmt->execute(['runde_id' => $rundeId]);
 
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Mischt die Startreihenfolge einer Runde neu (Button "Neu mischen" auf der
+     * Startliste, Feedback-Runde 2 – jeder Klick erzeugt eine neue zufällige
+     * Reihenfolge, es gibt keinen "ursprünglichen" Zustand zum Zurücksetzen).
+     */
+    public function mischeStartliste(int $rundeId): void
+    {
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare('SELECT teilnehmer_id FROM runde_teilnehmer WHERE runde_id = :runde_id');
+        $stmt->execute(['runde_id' => $rundeId]);
+        $teilnehmerIds = array_map('intval', array_column($stmt->fetchAll(), 'teilnehmer_id'));
+
+        if ($teilnehmerIds === []) {
+            return;
+        }
+
+        shuffle($teilnehmerIds);
+
+        $update = $pdo->prepare('UPDATE runde_teilnehmer SET reihenfolge = :reihenfolge WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id');
+        foreach (array_values($teilnehmerIds) as $index => $teilnehmerId) {
+            $update->execute(['reihenfolge' => $index + 1, 'runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId]);
+        }
     }
 
     /**
@@ -349,13 +379,120 @@ final class RoundService
                 $kriteriumsWerte[$kriterium['name']] = $durchschnitt;
             }
 
+            $fehlerDurchschnitt = $this->berechneFehlerDurchschnitt($rundeId, $teilnehmerId);
+            $kriteriumsWerte['Fehler'] = $fehlerDurchschnitt;
+
             $ergebnisse[$teilnehmerId] = [
-                'gesamt' => $scoring->berechneRundenGesamt($kriteriumsDurchschnitte),
+                'gesamt' => round($scoring->berechneRundenGesamt($kriteriumsDurchschnitte) + $fehlerDurchschnitt, 1),
                 'kriterien' => $kriteriumsWerte,
             ];
         }
 
         return $ergebnisse;
+    }
+
+    /**
+     * Durchschnittlicher Punktabzug aus dem "Fehler"-Feld (Feedback-Runde 2):
+     * pro Richter werden alle Minuspunkt-Einträge summiert (Richter ohne
+     * Eintrag zählen als 0), dann wie ein Kriterium über die 5 Richter
+     * gemittelt (bester/schlechtester gestrichen). Ergebnis ist <= 0.
+     */
+    private function berechneFehlerDurchschnitt(int $rundeId, int $teilnehmerId): float
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT SUM(wert) AS summe FROM fehler_eintraege
+             WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id
+             GROUP BY wertungsrichter_id'
+        );
+        $stmt->execute(['runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId]);
+        $summenProRichter = array_map('floatval', array_column($stmt->fetchAll(), 'summe'));
+
+        // Richter ohne jeden Eintrag zählen als 0 (keine Minuspunkte), damit
+        // für die Durchschnittsberechnung immer fünf Werte vorliegen.
+        $werte = array_pad($summenProRichter, -self::ANZAHL_RICHTER, 0.0);
+
+        return (new ScoringService())->berechneKriteriumsDurchschnitt($werte);
+    }
+
+    /**
+     * Vorläufige Rangliste einer laufenden Runde anhand der bisher abgegebenen
+     * Bewertungen (Feedback-Runde 2 – jederzeit im Admin-Bereich einsehbar,
+     * nicht erst nach Rundenabschluss). Teilnehmer:innen ohne jede Bewertung
+     * oder im DNF-Status werden nicht aufgeführt.
+     *
+     * @return array<int, array{teilnehmer_id:int, gesamt:?float, rang:?int, kriterien:array<string,float>}>
+     */
+    public function zwischenranglisteFuerRunde(int $rundeId): array
+    {
+        $pdo = Database::connection();
+        $scoring = new ScoringService();
+
+        $stmt = $pdo->prepare(
+            'SELECT rt.teilnehmer_id, t.status, t.kategorie_id FROM runde_teilnehmer rt
+             JOIN teilnehmer t ON t.id = rt.teilnehmer_id
+             WHERE rt.runde_id = :runde_id'
+        );
+        $stmt->execute(['runde_id' => $rundeId]);
+        $teilnehmer = $stmt->fetchAll();
+
+        $ergebnisse = [];
+        $kriterienProTeilnehmer = [];
+
+        foreach ($teilnehmer as $t) {
+            if ($t['status'] === 'dnf') {
+                continue;
+            }
+
+            $teilnehmerId = (int) $t['teilnehmer_id'];
+
+            $kStmt = $pdo->prepare('SELECT id, name FROM kriterien WHERE kategorie_id = :kategorie_id ORDER BY id');
+            $kStmt->execute(['kategorie_id' => $t['kategorie_id']]);
+            $kriterien = $kStmt->fetchAll();
+
+            $kriteriumsDurchschnitte = [];
+            $kriteriumsWerte = [];
+
+            foreach ($kriterien as $kriterium) {
+                $pStmt = $pdo->prepare(
+                    'SELECT punkte FROM bewertungen WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id AND kriterium_id = :kriterium_id'
+                );
+                $pStmt->execute(['runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId, 'kriterium_id' => $kriterium['id']]);
+                $werte = array_map('floatval', array_column($pStmt->fetchAll(), 'punkte'));
+
+                if ($werte === []) {
+                    continue;
+                }
+
+                $durchschnitt = $scoring->berechnePartiellenDurchschnitt($werte);
+                $kriteriumsDurchschnitte[] = $durchschnitt;
+                $kriteriumsWerte[$kriterium['name']] = $durchschnitt;
+            }
+
+            if ($kriteriumsDurchschnitte === []) {
+                continue;
+            }
+
+            $fehlerSummenStmt = $pdo->prepare(
+                'SELECT SUM(wert) AS summe FROM fehler_eintraege
+                 WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id
+                 GROUP BY wertungsrichter_id'
+            );
+            $fehlerSummenStmt->execute(['runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId]);
+            $fehlerSummen = array_map('floatval', array_column($fehlerSummenStmt->fetchAll(), 'summe'));
+            $fehlerDurchschnitt = $fehlerSummen === [] ? 0.0 : $scoring->berechnePartiellenDurchschnitt($fehlerSummen);
+            $kriteriumsWerte['Fehler'] = $fehlerDurchschnitt;
+
+            $ergebnisse[$teilnehmerId] = round($scoring->berechneRundenGesamt($kriteriumsDurchschnitte) + $fehlerDurchschnitt, 1);
+            $kriterienProTeilnehmer[$teilnehmerId] = $kriteriumsWerte;
+        }
+
+        $rangliste = (new RankingService())->rangliste($ergebnisse);
+        foreach ($rangliste as &$eintrag) {
+            $eintrag['kriterien'] = $kriterienProTeilnehmer[$eintrag['teilnehmer_id']] ?? [];
+        }
+        unset($eintrag);
+
+        return $rangliste;
     }
 
     /** Schliesst eine Runde ab und erstellt bei Bedarf die nächste(n) Runde(n). */
@@ -503,10 +640,15 @@ final class RoundService
         $n = count($aktive);
         $direktAnzahl = (int) ceil($n / 3);
 
+        // Bei Punktgleichheit an der Aufstiegsgrenze steigen alle Punktgleichen
+        // zusätzlich auf (Quote ist Minimum, siehe Feedback-Runde 2).
+        $direktAnzahl = $this->erweitereUmPunktgleiche($aktive, $direktAnzahl);
+
         $direkte = array_slice($aktive, 0, $direktAnzahl);
         $rest = array_slice($aktive, $direktAnzahl);
 
         $direkteIds = array_map(fn ($r) => (int) $r['teilnehmer_id'], $direkte);
+        shuffle($direkteIds);
 
         if (count($rest) === 0) {
             $finalId = $this->insertRunde($kategorieId, 'final', 'offen', 2);
@@ -533,7 +675,12 @@ final class RoundService
 
         $n = count($aktive);
         $qualifyAnzahl = (int) ceil($n / 2);
+        // Bei Punktgleichheit an der Aufstiegsgrenze steigen alle Punktgleichen
+        // zusätzlich auf (Quote ist Minimum, siehe Feedback-Runde 2).
+        $qualifyAnzahl = $this->erweitereUmPunktgleiche($aktive, $qualifyAnzahl);
         $qualifizierte = array_slice($aktive, 0, $qualifyAnzahl);
+        $qualifizierteIds = array_map(fn ($r) => (int) $r['teilnehmer_id'], $qualifizierte);
+        shuffle($qualifizierteIds);
 
         $pdo = Database::connection();
         $finalStmt = $pdo->prepare("SELECT id FROM runden WHERE kategorie_id = :kategorie_id AND typ = 'final'");
@@ -551,10 +698,34 @@ final class RoundService
         $reihenfolge = (int) $maxStmt->fetch()['m'];
 
         $insert = $pdo->prepare('INSERT OR IGNORE INTO runde_teilnehmer (runde_id, teilnehmer_id, reihenfolge) VALUES (:runde_id, :teilnehmer_id, :reihenfolge)');
-        foreach ($qualifizierte as $r) {
+        foreach ($qualifizierteIds as $teilnehmerId) {
             $reihenfolge++;
-            $insert->execute(['runde_id' => $finalId, 'teilnehmer_id' => $r['teilnehmer_id'], 'reihenfolge' => $reihenfolge]);
+            $insert->execute(['runde_id' => $finalId, 'teilnehmer_id' => $teilnehmerId, 'reihenfolge' => $reihenfolge]);
         }
+    }
+
+    /**
+     * Erweitert eine Aufstiegs-Quote, falls an der Grenze Punktgleichheit
+     * herrscht: alle Teilnehmer:innen mit demselben Gesamtscore wie der/die
+     * letzte innerhalb der Quote steigen zusätzlich auf (Feedback-Runde 2 –
+     * "eher alle Punktgleiche kommen weiter"). $aktive muss absteigend nach
+     * 'gesamt' sortiert sein (wie von RankingService::rangliste() geliefert).
+     *
+     * @param array<int, array{teilnehmer_id:int, gesamt:?float}> $aktive
+     */
+    private function erweitereUmPunktgleiche(array $aktive, int $anzahl): int
+    {
+        $n = count($aktive);
+        if ($anzahl >= $n || $anzahl <= 0) {
+            return $anzahl;
+        }
+
+        $grenzScore = $aktive[$anzahl - 1]['gesamt'];
+        while ($anzahl < $n && $aktive[$anzahl]['gesamt'] === $grenzScore) {
+            $anzahl++;
+        }
+
+        return $anzahl;
     }
 
     private function insertRunde(int $kategorieId, string $typ, string $status, int $reihenfolge): int

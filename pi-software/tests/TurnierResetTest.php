@@ -6,7 +6,7 @@ use App\Database;
 use App\Services\RoundService;
 use App\Services\TurnierResetService;
 
-test('Turnier-Reset: löscht alle Daten aus allen Tabellen inkl. Admin-Login', function () {
+test('Turnier-Reset: löscht alle Turnierdaten, Admin-Login bleibt erhalten (Feedback-Runde 2)', function () {
     $pdo = Database::connection();
 
     $pdo->exec("INSERT INTO admin (username, password_hash) VALUES ('org', 'hash')");
@@ -21,14 +21,18 @@ test('Turnier-Reset: löscht alle Daten aus allen Tabellen inkl. Admin-Login', f
 
     (new TurnierResetService())->alleDatenLoeschen();
 
-    $tabellen = ['admin', 'kategorien', 'kriterien', 'teilnehmer', 'runden', 'runde_teilnehmer', 'wertungsrichter', 'bewertungen', 'praesenz_status'];
+    $tabellen = ['kategorien', 'kriterien', 'teilnehmer', 'runden', 'runde_teilnehmer', 'wertungsrichter', 'bewertungen', 'praesenz_status', 'fehler_eintraege'];
     foreach ($tabellen as $tabelle) {
         $anzahl = (int) $pdo->query("SELECT COUNT(*) AS c FROM $tabelle")->fetch()['c'];
         assertEquals(0, $anzahl, "Tabelle $tabelle sollte nach Reset leer sein");
     }
 
-    // Nach dem Reset kann ein neues Turnier von vorne aufgesetzt werden (frische IDs ab 1).
-    $pdo->exec("INSERT INTO admin (username, password_hash) VALUES ('org2', 'hash2')");
-    $neueId = (int) $pdo->lastInsertId();
-    assertEquals(1, $neueId);
+    // Admin-Login bleibt bestehen, damit die Ersteinrichtung nicht erneut
+    // durchlaufen werden muss.
+    $adminAnzahl = (int) $pdo->query('SELECT COUNT(*) AS c FROM admin')->fetch()['c'];
+    assertEquals(1, $adminAnzahl, 'Admin-Login sollte nach Reset weiterhin bestehen');
+
+    // Neue Turnierdaten erhalten trotzdem frische IDs ab 1.
+    $neueKategorieId = orbv_seed_kategorie('Solo Test 2', 'solo', ['Tanz']);
+    assertEquals(1, $neueKategorieId);
 });

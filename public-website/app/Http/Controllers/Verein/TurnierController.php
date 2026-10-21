@@ -18,6 +18,10 @@ class TurnierController extends Controller
             'turnierKategorien.anmeldungenSolo' => fn ($q) => $q->where('verein_id', $vereinId),
             'turnierKategorien.anmeldungenPaar' => fn ($q) => $q->where('verein_id', $vereinId),
             'turnierKategorien.anmeldungenFormation' => fn ($q) => $q->where('verein_id', $vereinId),
+            // Für die Rang-Anzeige (Feedback-Runde 2): Rangliste wird nur über
+            // den Namen mit der eigenen Anmeldung abgeglichen, da Pi und
+            // Public-Website keine gemeinsame Teilnehmer-ID haben.
+            'turnierKategorien.ranglisteEintraege',
         ]);
 
         return view('verein.turniere.show', ['turnier' => $turnier]);

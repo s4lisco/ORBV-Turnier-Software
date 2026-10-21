@@ -4,7 +4,7 @@
         <a href="/organisatoren"
            class="flex aspect-square flex-col items-center justify-center rounded-2xl bg-blue-600 p-8 text-center text-white shadow-lg transition hover:bg-blue-700">
             <span class="text-4xl">🗂️</span>
-            <span class="mt-4 text-2xl font-semibold">Organisatoren</span>
+            <span class="mt-4 text-2xl font-semibold">Wertungsbüro</span>
         </a>
         <a href="/kampfrichter"
            class="flex aspect-square flex-col items-center justify-center rounded-2xl bg-emerald-600 p-8 text-center text-white shadow-lg transition hover:bg-emerald-700">

@@ -14,6 +14,10 @@ use App\Database;
 final class RankingService
 {
     /**
+     * DNF-Teilnehmer:innen (gesamt = null) erscheinen gar nicht auf der
+     * Rangliste (Feedback-Runde 2, überschreibt die bisherige "DNF zuunterst"-
+     * Darstellung aus Plan_Feedback_Umsetzung.md 8.4).
+     *
      * @param array<int, float|null> $ergebnisse teilnehmer_id => Gesamtpunktzahl (null = DNF, "nicht getanzt")
      * @return array<int, array{teilnehmer_id: int, gesamt: ?float, rang: ?int}>
      */
@@ -34,12 +38,6 @@ final class RankingService
             }
             $ranked[] = ['teilnehmer_id' => $teilnehmerId, 'gesamt' => $wert, 'rang' => $rang];
             $vorherigerWert = $wert;
-        }
-
-        foreach ($ergebnisse as $teilnehmerId => $wert) {
-            if ($wert === null) {
-                $ranked[] = ['teilnehmer_id' => $teilnehmerId, 'gesamt' => null, 'rang' => null];
-            }
         }
 
         return $ranked;
@@ -107,13 +105,13 @@ final class RankingService
 
             $ausgeschiedene = $this->hoffnungsrundeAusgeschiedene($kategorieId, $byTyp['final'], $roundService);
 
-            // Hoffnungsrunden-Ausgeschiedene stehen zuunterst, mit fortlaufenden
-            // Rangnummern nach der Finalrangliste (Plan_Feedback_Umsetzung.md 12.4).
-            $offset = count($finalRangliste);
+            // Hoffnungsrunden-Ausgeschiedene stehen zuunterst und erhalten alle
+            // denselben Rang, unabhängig von ihrem Hoffnungsrunden-Ergebnis
+            // (Feedback-Runde 2, überschreibt die individuelle Sortierung aus
+            // Plan_Feedback_Umsetzung.md 12.4).
+            $gemeinsamerRang = count($finalRangliste) + 1;
             foreach ($ausgeschiedene as &$eintrag) {
-                if ($eintrag['rang'] !== null) {
-                    $eintrag['rang'] += $offset;
-                }
+                $eintrag['rang'] = $gemeinsamerRang;
             }
             unset($eintrag);
 

@@ -19,7 +19,10 @@
         @endif
 
         @forelse ($turnier->turnierKategorien as $turnierKategorie)
-            @php $kategorie = $turnierKategorie->kategorie; @endphp
+            @php
+                $kategorie = $turnierKategorie->kategorie;
+                $ranglisteByName = $turnierKategorie->ranglisteEintraege->keyBy('name');
+            @endphp
             <div class="mb-6 rounded-2xl bg-white p-6 shadow">
                 <div class="mb-3 flex items-center justify-between">
                     <h2 class="text-lg font-semibold text-slate-800">{{ $kategorie->name }} <span class="text-slate-400">({{ $kategorie->typ }})</span></h2>
@@ -33,8 +36,14 @@
 
                 @if ($kategorie->typ === 'solo')
                     @forelse ($turnierKategorie->anmeldungenSolo as $a)
+                        @php $rang = $ranglisteByName->get($a->name)?->rang; @endphp
                         <div class="flex items-center justify-between border-t border-slate-100 py-2 text-sm">
-                            <span>{{ $a->name }} ({{ $a->geburtsdatum->format('d.m.Y') }})</span>
+                            <span>
+                                {{ $a->name }} ({{ $a->geburtsdatum->format('d.m.Y') }})
+                                @if ($rang)
+                                    <span class="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Rang {{ $rang }}</span>
+                                @endif
+                            </span>
                             @if ($turnier->istAnmeldungOffenFuerVerein())
                                 <span class="flex gap-3">
                                     <a href="{{ route('verein.anmeldungen.solo.edit', [$turnier, $kategorie, $a]) }}" class="text-blue-600 hover:underline">bearbeiten</a>
@@ -52,8 +61,14 @@
 
                 @if ($kategorie->typ === 'paar')
                     @forelse ($turnierKategorie->anmeldungenPaar as $a)
+                        @php $rang = $ranglisteByName->get($a->name_p1 . ' & ' . $a->name_p2)?->rang; @endphp
                         <div class="flex items-center justify-between border-t border-slate-100 py-2 text-sm">
-                            <span>{{ $a->name_p1 }} &amp; {{ $a->name_p2 }}</span>
+                            <span>
+                                {{ $a->name_p1 }} &amp; {{ $a->name_p2 }}
+                                @if ($rang)
+                                    <span class="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Rang {{ $rang }}</span>
+                                @endif
+                            </span>
                             @if ($turnier->istAnmeldungOffenFuerVerein())
                                 <span class="flex gap-3">
                                     <a href="{{ route('verein.anmeldungen.paar.edit', [$turnier, $kategorie, $a]) }}" class="text-blue-600 hover:underline">bearbeiten</a>
@@ -71,8 +86,14 @@
 
                 @if ($kategorie->typ === 'formation')
                     @forelse ($turnierKategorie->anmeldungenFormation as $a)
+                        @php $rang = $ranglisteByName->get($a->name)?->rang; @endphp
                         <div class="flex items-center justify-between border-t border-slate-100 py-2 text-sm">
-                            <span>{{ $a->name }} ({{ $a->anzahl_taenzerinnen }} Tänzerinnen)</span>
+                            <span>
+                                {{ $a->name }} ({{ $a->anzahl_taenzerinnen }} Tänzerinnen)
+                                @if ($rang)
+                                    <span class="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Rang {{ $rang }}</span>
+                                @endif
+                            </span>
                             @if ($turnier->istAnmeldungOffenFuerVerein())
                                 <span class="flex gap-3">
                                     <a href="{{ route('verein.anmeldungen.formation.edit', [$turnier, $kategorie, $a]) }}" class="text-blue-600 hover:underline">bearbeiten</a>

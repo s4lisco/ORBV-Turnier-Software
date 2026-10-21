@@ -1,16 +1,22 @@
 <div class="mx-auto max-w-2xl p-6 print:max-w-full print:p-0">
     <div class="mb-4 flex items-center justify-between print:hidden">
         <a href="<?= htmlspecialchars($backUrl ?? '/admin/runden/' . (int) $runde['id']) ?>" class="text-sm text-blue-600 hover:underline">&larr; zurück zur Rundensteuerung</a>
-        <button type="button" onclick="window.print()" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-            Drucken
-        </button>
+        <div class="flex gap-2">
+            <?php if ($runde['id'] !== null): ?>
+                <form method="post" action="/admin/runden/<?= (int) $runde['id'] ?>/startliste/mischen">
+                    <button type="submit" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-300">
+                        Neu mischen
+                    </button>
+                </form>
+            <?php endif; ?>
+            <button type="button" onclick="window.print()" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                Drucken
+            </button>
+        </div>
     </div>
 
     <div class="rounded-2xl bg-white p-6 shadow print:rounded-none print:p-0 print:shadow-none">
-        <h1 class="text-2xl font-bold text-slate-800">Startliste: <?= htmlspecialchars($runde['kategorie_name']) ?></h1>
-        <p class="mb-6 text-sm text-slate-500">
-            Runde: <?= htmlspecialchars($runde['typ']) ?><?= $paarweise ? ' · Je zwei Startnummern tanzen gleichzeitig' : '' ?>
-        </p>
+        <h1 class="mb-6 text-2xl font-bold text-slate-800">Startliste: <?= htmlspecialchars($runde['kategorie_name']) ?></h1>
 
         <?php if (empty($teilnehmer)): ?>
             <p class="text-sm text-slate-500">Keine Teilnehmer:innen in dieser Runde.</p>
@@ -18,7 +24,7 @@
             <table class="w-full text-left text-sm">
                 <thead>
                 <tr class="border-b text-slate-500">
-                    <th class="py-2">Paar</th>
+                    <th class="py-2">Runde</th>
                     <th class="py-2">Startnummer &amp; Name</th>
                 </tr>
                 </thead>

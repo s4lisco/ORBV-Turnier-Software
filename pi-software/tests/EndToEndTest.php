@@ -67,12 +67,12 @@ test('Ende-zu-Ende: Import -> Startnummern -> Runden -> Endrangliste', function 
     orbv_bewerte_ganze_runde($roundService, $finalId, $fortgeschrittenId, $richterIds);
     $roundService->rundeAbschliessen($finalId);
 
-    // 6 Finalist:innen + 3 in der Hoffnungsrunde Ausgeschiedene (zuunterst,
-    // fortlaufende Rangnummern 7-9, siehe Plan_Feedback_Umsetzung.md 12.4).
+    // 6 Finalist:innen + 3 in der Hoffnungsrunde Ausgeschiedene (zuunterst, alle
+    // mit demselben Rang 7, siehe Feedback-Runde 2 / RankingService).
     $ranglisteFortgeschritten = (new RankingService())->endranglisteFuerKategorie($fortgeschrittenId);
     assertEquals(9, count($ranglisteFortgeschritten));
     assertEquals(1, $ranglisteFortgeschritten[0]['rang']);
-    assertEquals([7, 8, 9], array_column(array_slice($ranglisteFortgeschritten, 6), 'rang'));
+    assertEquals([7, 7, 7], array_column(array_slice($ranglisteFortgeschritten, 6), 'rang'));
 });
 
 /** Gibt alle Teilnehmer:innen einer Runde frei und bewertet sie mit absteigenden, eindeutigen Punktzahlen. */

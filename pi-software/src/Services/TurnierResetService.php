@@ -7,8 +7,10 @@ namespace App\Services;
 use App\Database;
 
 /**
- * Kompletter Turnier-Reset: löscht alle Turnierdaten und führt die App
- * zurück in den Zustand einer frischen Installation (siehe ResetController).
+ * Kompletter Turnier-Reset: löscht alle Turnierdaten (Kategorien, Teilnehmer:innen,
+ * Runden, Bewertungen, Wertungsrichter-Codes) für ein neues Turnier. Der
+ * Admin-Login bleibt dabei bestehen, damit die Ersteinrichtung nach einem
+ * Reset nicht erneut durchlaufen werden muss (Feedback-Runde 2).
  */
 final class TurnierResetService
 {
@@ -18,6 +20,7 @@ final class TurnierResetService
         $pdo->beginTransaction();
 
         // Reihenfolge respektiert Fremdschlüssel-Abhängigkeiten (siehe schema.sql).
+        $pdo->exec('DELETE FROM fehler_eintraege');
         $pdo->exec('DELETE FROM bewertungen');
         $pdo->exec('DELETE FROM praesenz_status');
         $pdo->exec('DELETE FROM runde_teilnehmer');
@@ -26,8 +29,9 @@ final class TurnierResetService
         $pdo->exec('DELETE FROM kriterien');
         $pdo->exec('DELETE FROM kategorien');
         $pdo->exec('DELETE FROM wertungsrichter');
-        $pdo->exec('DELETE FROM admin');
-        $pdo->exec('DELETE FROM sqlite_sequence');
+        $pdo->exec(
+            "DELETE FROM sqlite_sequence WHERE name != 'admin'"
+        );
 
         $pdo->commit();
     }

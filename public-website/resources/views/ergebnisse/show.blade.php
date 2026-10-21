@@ -18,14 +18,16 @@
                     <thead>
                     <tr class="border-b text-slate-500">
                         <th class="py-2 pr-4">Rang</th>
-                        <th class="py-2">Name</th>
+                        <th class="py-2 pr-4">Name</th>
+                        <th class="py-2">Verein</th>
                     </tr>
                     </thead>
                     <tbody>
                     @foreach ($eintraege as $eintrag)
                         <tr class="border-b {{ $eintrag->istDnf() ? 'text-slate-400' : '' }}">
                             <td class="py-2 pr-4 font-semibold">{{ $eintrag->rang }}</td>
-                            <td class="py-2">{{ $eintrag->name }}</td>
+                            <td class="py-2 pr-4">{{ $eintrag->name }}</td>
+                            <td class="py-2">{{ $eintrag->verein_name ?? '–' }}</td>
                         </tr>
                     @endforeach
                     </tbody>

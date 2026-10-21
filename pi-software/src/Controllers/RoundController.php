@@ -105,6 +105,44 @@ final class RoundController
         ]);
     }
 
+    /** Vorläufige Zwischenrangliste einer laufenden Runde (Feedback-Runde 2). */
+    public function zwischenrangliste(string $rundeId): void
+    {
+        Auth::requireAdmin();
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare(
+            'SELECT r.*, k.name AS kategorie_name FROM runden r JOIN kategorien k ON k.id = r.kategorie_id WHERE r.id = :id'
+        );
+        $stmt->execute(['id' => $rundeId]);
+        $runde = $stmt->fetch();
+
+        if (!$runde) {
+            http_response_code(404);
+            echo 'Runde nicht gefunden.';
+            return;
+        }
+
+        $rangliste = (new RoundService())->zwischenranglisteFuerRunde((int) $rundeId);
+
+        $teilnehmerNamen = [];
+        if ($rangliste !== []) {
+            $ids = array_map(fn ($r) => (int) $r['teilnehmer_id'], $rangliste);
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = $pdo->prepare("SELECT id, startnummer, name, name_p2, verein_name FROM teilnehmer WHERE id IN ($placeholders)");
+            $stmt->execute($ids);
+            foreach ($stmt->fetchAll() as $t) {
+                $teilnehmerNamen[(int) $t['id']] = $t;
+            }
+        }
+
+        View::render('admin/zwischenrangliste', [
+            'runde' => $runde,
+            'rangliste' => $rangliste,
+            'teilnehmerNamen' => $teilnehmerNamen,
+        ], 'Zwischenrangliste: ' . $runde['kategorie_name'] . ' – ORBV Turnier');
+    }
+
     /** Druckbare Startliste einer Runde, separat pro Kategorie (siehe Plan_Feedback_Umsetzung.md 10.1/10.2). */
     public function startliste(string $rundeId): void
     {
@@ -132,6 +170,16 @@ final class RoundController
             'paarweise' => $paarweise,
             'gruppen' => array_chunk($teilnehmer, $paarweise ? 2 : 1),
         ], 'Startliste: ' . $runde['kategorie_name'] . ' – ORBV Turnier');
+    }
+
+    /** Mischt die Startreihenfolge einer Runde neu (Button "Neu mischen", Feedback-Runde 2). */
+    public function startlisteMischen(string $rundeId): void
+    {
+        Auth::requireAdmin();
+        (new RoundService())->mischeStartliste((int) $rundeId);
+
+        header('Location: /admin/runden/' . (int) $rundeId . '/startliste');
+        exit;
     }
 
     /** Druckbare Startliste vor dem Start der ersten Runde einer Kategorie (Vorschau anhand Startnummern-Reihenfolge). */

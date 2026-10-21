@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\DB;
  * zum bestehenden Offline-Workflow auf dem Pi. Der Admin lädt hier die vom
  * Pi generierte CSV (siehe pi-software CsvExportService::exportRanglisteFuerUpload,
  * Spalten: kategorie_id,kategorie_name,rang,name) hoch; die Ergebnisse werden
- * danach auf der öffentlichen Ergebnisseite angezeigt.
+ * danach auf der öffentlichen Ergebnisseite angezeigt. Die Spalte
+ * verein_name ist optional, damit auch ältere CSV-Exporte ohne diese Spalte
+ * noch funktionieren.
  */
 class RanglisteController extends Controller
 {
@@ -68,6 +70,7 @@ class RanglisteController extends Controller
                 'turnier_kategorie_id' => $turnierKategorie->id,
                 'rang' => $data['rang'],
                 'name' => $data['name'],
+                'verein_name' => ($data['verein_name'] ?? '') !== '' ? $data['verein_name'] : null,
             ];
         }
 

@@ -1,7 +1,7 @@
 <div class="flex min-h-screen items-center justify-center p-6">
     <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
         <h1 class="mb-2 text-2xl font-bold text-slate-800">Ersteinrichtung</h1>
-        <p class="mb-6 text-sm text-slate-500">Lege den Admin-Zugang für das Organisator-Dashboard fest.</p>
+        <p class="mb-6 text-sm text-slate-500">Lege den Admin-Zugang für das Wertungsbüro-Dashboard fest.</p>
 
         <?php if ($error): ?>
             <p class="mb-4 rounded-lg bg-red-100 px-4 py-2 text-sm text-red-700"><?= htmlspecialchars($error) ?></p>

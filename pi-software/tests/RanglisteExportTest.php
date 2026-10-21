@@ -6,7 +6,7 @@ use App\Database;
 use App\Services\CsvExportService;
 use App\Services\RoundService;
 
-test('Rangliste-Export für Upload: nutzt remote_id, überspringt Kategorien ohne remote_id, DNF als "DNF"', function () {
+test('Rangliste-Export für Upload: nutzt remote_id, überspringt Kategorien ohne remote_id, DNF nicht enthalten', function () {
     $pdo = Database::connection();
 
     // Kategorie mit remote_id (wie nach einem CSV-Import von turnier.orbv.ch, siehe 8.1b)
@@ -57,10 +57,12 @@ test('Rangliste-Export für Upload: nutzt remote_id, überspringt Kategorien ohn
 
     $rows = array_map(fn (string $line) => str_getcsv($line, escape: '\\'), file($path));
     $header = array_shift($rows);
-    assertEquals(['kategorie_id', 'kategorie_name', 'rang', 'name'], $header);
+    assertEquals(['kategorie_id', 'kategorie_name', 'rang', 'name', 'verein_name'], $header);
 
-    // Nur die Kategorie mit remote_id liefert Zeilen (5 Teilnehmer:innen)
-    assertEquals(5, count($rows));
+    // Nur die Kategorie mit remote_id liefert Zeilen; DNF erscheint nicht auf
+    // der Rangliste (Feedback-Runde 2), also nur die 4 aktiv bewerteten
+    // Teilnehmer:innen.
+    assertEquals(4, count($rows));
 
     foreach ($rows as $row) {
         assertEquals('42', $row[0]);
@@ -68,6 +70,6 @@ test('Rangliste-Export für Upload: nutzt remote_id, überspringt Kategorien ohn
     }
 
     $raenge = array_column($rows, 2);
-    assertTrue(in_array('DNF', $raenge, true), 'DNF-Zeile sollte vorhanden sein');
+    assertTrue(!in_array('DNF', $raenge, true), 'DNF-Zeile sollte nicht vorhanden sein');
     assertTrue(in_array('1', $raenge, true), 'Ein Rang 1 sollte vergeben sein');
 });

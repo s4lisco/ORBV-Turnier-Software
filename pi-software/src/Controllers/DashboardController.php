@@ -39,6 +39,6 @@ final class DashboardController
         View::render('admin/dashboard', [
             'kategorien' => $kategorien,
             'richterAnzahl' => $richterAnzahl,
-        ], 'Organisator-Dashboard – ORBV Turnier');
+        ], 'Wertungsbüro-Dashboard – ORBV Turnier');
     }
 }

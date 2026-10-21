@@ -71,6 +71,19 @@ CREATE TABLE IF NOT EXISTS bewertungen (
     UNIQUE (runde_id, teilnehmer_id, wertungsrichter_id, kriterium_id)
 );
 
+-- Minuspunkte-Einträge ("Fehler"-Feld, Feedback-Runde 2): jeder Richter kann
+-- pro Teilnehmer:in und Runde mehrere Abzüge (0/-1/-5/-10) erfassen, die
+-- aufsummiert und dann wie ein Kriterium über die 5 Richter gemittelt werden
+-- (bester/schlechtester gestrichen) – siehe RoundService::berechneFehlerDurchschnitt().
+CREATE TABLE IF NOT EXISTS fehler_eintraege (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    runde_id INTEGER NOT NULL REFERENCES runden(id),
+    teilnehmer_id INTEGER NOT NULL REFERENCES teilnehmer(id),
+    wertungsrichter_id INTEGER NOT NULL REFERENCES wertungsrichter(id),
+    wert REAL NOT NULL CHECK (wert IN (0, -1, -5, -10)),
+    erstellt_am TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS praesenz_status (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     runde_id INTEGER NOT NULL REFERENCES runden(id),

@@ -27,7 +27,7 @@ test('Gleichstand: zwei 1. Plätze, danach direkt Platz 3', function () {
     assertEquals(4, $rangByTeilnehmer[4]);
 });
 
-test('DNF-Teilnehmer:innen (null) werden ohne Rang ans Ende gestellt', function () {
+test('DNF-Teilnehmer:innen (null) erscheinen gar nicht auf der Rangliste (Feedback-Runde 2)', function () {
     $service = new RankingService();
 
     $ergebnisse = [
@@ -38,11 +38,9 @@ test('DNF-Teilnehmer:innen (null) werden ohne Rang ans Ende gestellt', function 
 
     $rangliste = $service->rangliste($ergebnisse);
 
-    assertEquals(3, count($rangliste));
+    assertEquals(2, count($rangliste));
     assertEquals(1, $rangliste[0]['teilnehmer_id']);
     assertEquals(1, $rangliste[0]['rang']);
     assertEquals(3, $rangliste[1]['teilnehmer_id']);
     assertEquals(2, $rangliste[1]['rang']);
-    assertEquals(2, $rangliste[2]['teilnehmer_id']);
-    assertEquals(null, $rangliste[2]['rang']);
 });

@@ -7,7 +7,11 @@
             <div class="flex items-center justify-between rounded-xl bg-white p-4 shadow">
                 <div>
                     <div class="font-semibold"><?= htmlspecialchars($kategorie['name']) ?></div>
-                    <div class="text-sm text-slate-500"><?= (int) $kategorie['anzahl_teilnehmer'] ?> Teilnehmer:innen</div>
+                    <div class="text-sm text-slate-500">
+                        <a href="/admin/kategorien/<?= (int) $kategorie['id'] ?>/teilnehmer" class="hover:underline">
+                            <?= (int) $kategorie['anzahl_teilnehmer'] ?> Teilnehmer:innen
+                        </a>
+                    </div>
                 </div>
                 <?php if ((int) $kategorie['anzahl_runden'] === 0): ?>
                     <?php if ((int) $kategorie['anzahl_ohne_startnummer'] > 0): ?>

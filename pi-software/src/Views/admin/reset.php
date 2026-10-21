@@ -5,9 +5,9 @@
         <h1 class="mb-2 text-2xl font-bold text-red-700">Turnier zurücksetzen</h1>
         <p class="mb-6 text-sm text-slate-600">
             Löscht unwiderruflich <strong>alle</strong> Turnierdaten auf diesem Gerät: Kategorien,
-            Teilnehmer:innen, Startnummern, Runden, Bewertungen, Wertungsrichter-Codes sowie den
-            Organisator-Login. Die App springt danach zur Ersteinrichtung zurück, als wäre sie frisch
-            installiert. Bereits heruntergeladene Exporte bleiben davon unberührt.
+            Teilnehmer:innen, Startnummern, Runden, Bewertungen und Wertungsrichter-Codes. Der
+            Wertungsbüro-Login bleibt bestehen, danach kann direkt ein neues Turnier aufgesetzt
+            werden. Bereits heruntergeladene Exporte bleiben davon unberührt.
         </p>
 
         <?php if ($error): ?>

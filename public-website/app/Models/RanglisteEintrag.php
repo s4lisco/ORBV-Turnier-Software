@@ -9,7 +9,7 @@ class RanglisteEintrag extends Model
 {
     protected $table = 'rangliste_eintraege';
 
-    protected $fillable = ['turnier_kategorie_id', 'rang', 'name'];
+    protected $fillable = ['turnier_kategorie_id', 'rang', 'name', 'verein_name'];
 
     public function turnierKategorie(): BelongsTo
     {

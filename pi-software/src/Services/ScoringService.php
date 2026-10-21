@@ -33,4 +33,30 @@ final class ScoringService
     {
         return round(array_sum($kriteriumsDurchschnitte), 1);
     }
+
+    /**
+     * Vorläufiger Durchschnitt für die Zwischenrangliste (Feedback-Runde 2),
+     * solange noch nicht alle 5 Richterwerte vorliegen: ab 3 vorhandenen
+     * Werten wird wie final bester/schlechtester gestrichen und der Rest
+     * gemittelt, bei weniger als 3 Werten einfacher Durchschnitt aller
+     * vorhandenen Werte.
+     *
+     * @param float[] $werte 1 bis 5 bisher abgegebene Richterwerte
+     */
+    public function berechnePartiellenDurchschnitt(array $werte): float
+    {
+        if ($werte === []) {
+            throw new InvalidArgumentException('Es muss mindestens ein Wert vorliegen.');
+        }
+
+        if (count($werte) < 3) {
+            return round(array_sum($werte) / count($werte), 1);
+        }
+
+        $sortiert = $werte;
+        sort($sortiert);
+        $mittlere = array_slice($sortiert, 1, count($sortiert) - 2);
+
+        return round(array_sum($mittlere) / count($mittlere), 1);
+    }
 }

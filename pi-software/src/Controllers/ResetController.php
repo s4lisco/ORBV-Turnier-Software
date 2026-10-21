@@ -11,9 +11,11 @@ use App\View;
 
 /**
  * Kompletter Turnier-Reset: löscht alle Turnierdaten (Kategorien, Teilnehmer:innen,
- * Runden, Bewertungen, Wertungsrichter-Codes, Organisator-Login) und führt zurück
- * zur Ersteinrichtung. Gedacht für den Fall, dass ein Turnier fälschlicherweise
- * gestartet oder abgebrochen wurde und komplett neu aufgesetzt werden muss.
+ * Runden, Bewertungen, Wertungsrichter-Codes) für ein neues Turnier. Der
+ * Admin-Login bleibt bestehen, die Ersteinrichtung wird daher nicht erneut
+ * ausgelöst (Feedback-Runde 2). Gedacht für den Fall, dass ein Turnier
+ * fälschlicherweise gestartet oder abgebrochen wurde und komplett neu
+ * aufgesetzt werden muss.
  */
 final class ResetController
 {
@@ -56,7 +58,7 @@ final class ResetController
         (new TurnierResetService())->alleDatenLoeschen();
         Auth::logoutAdmin();
 
-        header('Location: /admin/setup');
+        header('Location: /admin/login');
         exit;
     }
 

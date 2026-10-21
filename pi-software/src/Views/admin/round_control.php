@@ -4,6 +4,8 @@
     <p class="mb-1 text-sm text-slate-500">Runde: <?= htmlspecialchars($runde['typ']) ?> · Status: <span id="runden-status"><?= htmlspecialchars($runde['status']) ?></span></p>
     <p class="mb-6 text-sm">
         <a href="/admin/runden/<?= (int) $runde['id'] ?>/startliste" class="text-blue-600 hover:underline">Startliste ansehen &amp; drucken →</a>
+        ·
+        <a href="/admin/runden/<?= (int) $runde['id'] ?>/zwischenrangliste" class="text-blue-600 hover:underline">Zwischenrangliste ansehen →</a>
     </p>
 
     <div class="mb-6 rounded-2xl bg-white p-6 shadow">
@@ -13,7 +15,7 @@
             sobald alle 5 die aktuelle(n) Startnummer(n) bewertet haben. Sobald alle Teilnehmer:innen
             dieser Runde von allen 5 Richtern bewertet wurden, wird die Runde automatisch abgeschlossen.
             Die jeweils nächste Runde (z.B. final2, Hoffnungsrunde oder Finale) muss danach vom
-            Organisator in der Rundenübersicht manuell gestartet werden.
+            Wertungsbüro in der Rundenübersicht manuell gestartet werden.
         </p>
     </div>
 

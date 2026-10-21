@@ -188,3 +188,98 @@ Diese Änderungen zuerst umsetzen, da spätere Phasen darauf aufbauen.
   Pi-Export und Public-Website-Import konsistent definiert werden.
 - Prüfen, ob USB-Druckerunterstützung auf Raspberry Pi OS Lite bereits vorhanden ist
   oder ein CUPS-Setup zusätzlich nötig ist (10.2).
+
+---
+
+# Feedback-Runde 2
+
+Nach dem ersten Testlauf (Phasen 8-12 oben) kam eine zweite Feedback-Runde zurück. Diese
+Sektion dokumentiert die Umsetzung und hält explizit fest, welche Entscheidungen aus
+Runde 1 dabei überschrieben wurden.
+
+**Mit dem Nutzer vorab geklärt (ausgeklammert aus diesem Plan):** Kriterien-Umbenennung
+und Altersverifikation bei der Anmeldung werden vorerst **nicht** umgesetzt.
+
+## 13. Startliste
+- Spaltenkopf "Paar" (Tabelle bei paarweise tanzenden Kategorien) → "Runde" umbenannt,
+  Unterzeile mit dem Rundentyp unter der Überschrift entfernt
+  (`pi-software/src/Views/admin/startliste.php`).
+- Reihenfolge ist jetzt **immer zufällig**: `RoundService` mischt die Teilnehmer:innen
+  vor dem Anlegen jeder Runde (`starteErsteRunde`, `nachVorrunde`, `nachHoffnungsrunde`).
+  final2 bleibt dabei weiterhin die umgekehrte Reihenfolge von final1 (Runde-1-Spezifikation
+  12.1 bleibt bestehen), da beide aus demselben gemischten Array abgeleitet werden.
+- Neuer Button "Neu mischen" auf der Startliste (`RoundService::mischeStartliste()`,
+  Route `POST /admin/runden/{rundeId}/startliste/mischen`) – jeder Klick erzeugt eine neue
+  zufällige Reihenfolge, es gibt keinen "ursprünglichen" Zustand.
+
+## 14. Zwischenrangliste während laufender Runde
+- Neue Methode `RoundService::zwischenranglisteFuerRunde()`: vorläufige Rangliste anhand der
+  bisher abgegebenen Bewertungen (ab 3 Richterwerten wird wie final bester/schlechtester
+  gestrichen, darunter einfacher Durchschnitt). Neue Admin-Ansicht
+  `admin/zwischenrangliste.php`, Route `GET /admin/runden/{rundeId}/zwischenrangliste`,
+  verlinkt von der Rundensteuerung.
+
+## 15. Tie-Break beim Aufstieg
+- Bei Punktgleichheit genau an der Aufstiegsgrenze (Vorrunde→Final/Hoffnungsrunde,
+  Hoffnungsrunde→Final) steigen **alle** Punktgleichen zusätzlich auf – die Quote
+  (`ceil(n/3)` bzw. `ceil(n/2)`) ist damit ein Minimum, keine feste Obergrenze mehr
+  (`RoundService::erweitereUmPunktgleiche()`, verwendet in `nachVorrunde()` und
+  `nachHoffnungsrunde()`).
+
+## 16. "Fehler"-Minuspunkte-Feld
+- Neue Tabelle `fehler_eintraege` (pro Richter beliebig viele Einträge aus {0, -1, -5, -10}
+  je Teilnehmer:in und Runde, additiv). UI im Bewertungsformular der Wertungsrichter
+  (`judge/scoring_form.php`): Auswahlfeld + "+ hinzufügen", laufende Summenanzeige.
+- Berechnung (`RoundService::berechneFehlerDurchschnitt()`): pro Richter werden alle
+  Einträge summiert (fehlende Richter = 0), die 5 Richter-Summen werden wie ein Kriterium
+  verrechnet (bester/schlechtester gestrichen, Rest gemittelt). Der Durchschnitt wird zur
+  Gesamtpunktzahl der Runde addiert (ist ≤ 0) und als zusätzliches "Fehler"-Feld neben
+  Tanz/Ausdruck/Technik/Gesamt angezeigt.
+
+## 17. Hoffnungsrunde-Ausgeschiedene: gemeinsamer Rang
+- **Überschreibt Runde-1-Punkt 12.4:** Statt individueller Rangnummern nach
+  Hoffnungsrunden-Ergebnis erhalten jetzt **alle** in der Hoffnungsrunde ausgeschiedenen
+  Teilnehmer:innen denselben Rang (`Anzahl Finalist:innen + 1`). Die Anzeige-Reihenfolge
+  innerhalb dieser Gruppe bleibt weiterhin nach Hoffnungsrunden-Ergebnis sortiert
+  (`RankingService::endranglisteFuerKategorie()`).
+
+## 18. DNF nicht mehr auf der Rangliste
+- **Überschreibt Runde-1-Punkt 8.4:** DNF-Teilnehmer:innen wurden bisher zuunterst mit
+  "DNF" statt Rang angezeigt. Jetzt erscheinen sie **gar nicht** mehr auf der Rangliste –
+  weder im Admin-Bereich (`admin/results.php`) noch im CSV-Export für turnier.orbv.ch
+  (`CsvExportService`) – (`RankingService::rangliste()` filtert sie vollständig heraus).
+
+## 19. Startnummernvergabe: Liste fehlender Nummern
+- Neue Ansicht `admin/startnummern_fehlend.php` (Route
+  `GET /admin/startnummern/fehlend`, verlinkt vom Dashboard): listet alle Teilnehmer:innen
+  ohne zugewiesene Startnummer, für die manuelle Ausgabe der Nummern-Karten am Check-in.
+
+## 20. Ersteinrichtung nicht erneut nach Reset
+- `TurnierResetService::alleDatenLoeschen()` löscht die `admin`-Tabelle nicht mehr –
+  der Wertungsbüro-Login bleibt nach einem Reset bestehen. `ResetController` leitet danach
+  auf `/admin/login` statt `/admin/setup` weiter.
+
+## 21. "Organisator" → "Wertungsbüro"
+- Alle sichtbaren Labels umbenannt (Dashboard-Titel, Login-Seite, Ersteinrichtung,
+  Hinweistexte). Routen (`/organisatoren`) und interne Code-Kommentare bleiben
+  unverändert, es handelt sich um eine reine Anzeige-Änderung.
+
+## 22. Einzelne Teilnehmer:innen löschen
+- Neue Ansicht `admin/teilnehmer_liste.php` je Kategorie (Route
+  `GET /admin/kategorien/{kategorieId}/teilnehmer`, verlinkt aus der Rundenübersicht) mit
+  Lösch-Button je Teilnehmer:in (`POST /admin/teilnehmer/{teilnehmerId}/loeschen`,
+  `TeilnehmerController`). Löscht die Person inkl. abhängiger Bewertungen/Fehler-Einträge/
+  Rundenzuordnungen.
+
+## 23. Veranstalter-Ansicht: Anzahl Personen pro Kategorie
+- Die bestehende Admin-Turnieransicht (`admin/turniere/show.blade.php`) zeigt je Kategorie
+  jetzt explizit die Anzahl angemeldeter Personen an (Solo = Anzahl Anmeldungen, Paar =
+  Anzahl × 2, Formation = Summe `anzahl_taenzerinnen`).
+
+## 24. Vereinsseite: Rang pro eigenem/er Tänzer:in
+- `Verein/TurnierController::show()` lädt zusätzlich die hochgeladene Rangliste der
+  Kategorie und gleicht sie über den Namen mit der eigenen Anmeldung ab (es gibt keine
+  gemeinsame Teilnehmer-ID zwischen Pi und Public-Website). Bei Treffer wird der Rang als
+  Badge neben dem Namen angezeigt (`verein/turniere/show.blade.php`). Eine Punktzahl wird
+  nicht angezeigt, da das aktuelle CSV-Format (`kategorie_id,kategorie_name,rang,name,
+  verein_name`) keine Punktzahl enthält.

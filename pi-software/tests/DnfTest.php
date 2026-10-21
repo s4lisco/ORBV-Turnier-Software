@@ -6,7 +6,7 @@ use App\Database;
 use App\Services\RankingService;
 use App\Services\RoundService;
 
-test('DNF: Teilnehmer:in mit status=dnf erscheint in der Rangliste ohne Rang, andere werden normal gerankt', function () {
+test('DNF: Teilnehmer:in mit status=dnf erscheint gar nicht auf der Rangliste, andere werden normal gerankt (Feedback-Runde 2)', function () {
     $kategorieId = orbv_seed_kategorie('Solo Einsteiger', 'solo', ['Tanz', 'Ausdruck', 'Technik']);
     $teilnehmerIds = orbv_seed_teilnehmer($kategorieId, 5);
     $richterIds = orbv_seed_richter();
@@ -43,12 +43,11 @@ test('DNF: Teilnehmer:in mit status=dnf erscheint in der Rangliste ohne Rang, an
     $roundService->rundeAbschliessen($final2Id);
 
     $rangliste = (new RankingService())->endranglisteFuerKategorie($kategorieId);
-    assertEquals(5, count($rangliste));
+    assertEquals(4, count($rangliste), 'DNF-Teilnehmer:in erscheint nicht auf der Rangliste.');
 
-    $letzterEintrag = $rangliste[count($rangliste) - 1];
-    assertEquals($dnfTeilnehmerId, $letzterEintrag['teilnehmer_id'], 'DNF-Teilnehmer:in sollte zuunterst stehen.');
-    assertEquals(null, $letzterEintrag['rang'], 'DNF-Teilnehmer:in hat keinen Rang.');
-    assertEquals(null, $letzterEintrag['gesamt'], 'DNF-Teilnehmer:in hat keine Gesamtpunktzahl.');
+    foreach ($rangliste as $eintrag) {
+        assertTrue($eintrag['teilnehmer_id'] !== $dnfTeilnehmerId, 'DNF-Teilnehmer:in sollte nicht in der Rangliste vorkommen.');
+    }
 
     assertEquals(1, $rangliste[0]['rang']);
 });
