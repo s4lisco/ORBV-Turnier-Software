@@ -21,6 +21,7 @@ final class RoundController
                     (SELECT COUNT(*) FROM runden r WHERE r.kategorie_id = k.id) AS anzahl_runden,
                     (SELECT r.id FROM runden r WHERE r.kategorie_id = k.id AND r.status = 'laufend' LIMIT 1) AS laufende_runde_id,
                     (SELECT r.id FROM runden r WHERE r.kategorie_id = k.id AND r.status = 'offen' ORDER BY r.reihenfolge ASC LIMIT 1) AS naechste_runde_id,
+                    (SELECT r.id FROM runden r WHERE r.kategorie_id = k.id AND r.status = 'abgeschlossen' ORDER BY r.reihenfolge DESC LIMIT 1) AS letzte_abgeschlossene_runde_id,
                     (SELECT COUNT(*) FROM teilnehmer t WHERE t.kategorie_id = k.id AND t.status = 'aktiv' AND t.startnummer IS NULL) AS anzahl_ohne_startnummer
              FROM kategorien k ORDER BY k.name"
         )->fetchAll();
@@ -170,6 +171,23 @@ final class RoundController
             'paarweise' => $paarweise,
             'gruppen' => array_chunk($teilnehmer, $paarweise ? 2 : 1),
         ], 'Startliste: ' . $runde['kategorie_name'] . ' – ORBV Turnier');
+    }
+
+    /** Mischt die Startreihenfolge einer noch nicht gestarteten Runde neu (final2, Hoffnungsrunde, Finale). */
+    public function startlisteMischen(string $rundeId): void
+    {
+        Auth::requireAdmin();
+
+        try {
+            (new RoundService())->mischeStartliste((int) $rundeId);
+        } catch (\Throwable $e) {
+            http_response_code(422);
+            echo htmlspecialchars($e->getMessage());
+            return;
+        }
+
+        header('Location: /admin/runden/' . (int) $rundeId . '/startliste');
+        exit;
     }
 
     /** Druckbare Startliste vor dem Start der ersten Runde einer Kategorie (Vorschau anhand Startnummern-Reihenfolge). */

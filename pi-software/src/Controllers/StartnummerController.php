@@ -22,22 +22,47 @@ final class StartnummerController
     }
 
     /**
-     * Liste der Teilnehmer:innen ohne zugewiesene Startnummer, für die manuelle
-     * Ausgabe der Startnummern-Karten am Check-in (Feedback-Runde 2).
+     * Sperrliste für Startnummern (Feedback-Runde 2): Nummern, die hier
+     * eingetragen sind, werden bei "Startnummern vergeben" übersprungen (z.B.
+     * weil eine physische Nummernkarte fehlt oder beschädigt ist).
      */
-    public function fehlende(): void
+    public function sperrliste(): void
     {
         Auth::requireAdmin();
 
-        $teilnehmer = Database::connection()->query(
-            "SELECT t.id, t.name, t.name_p2, t.verein_name, k.name AS kategorie_name
-             FROM teilnehmer t JOIN kategorien k ON k.id = t.kategorie_id
-             WHERE t.startnummer IS NULL
-             ORDER BY k.name, t.name"
-        )->fetchAll();
+        $gesperrt = Database::connection()
+            ->query('SELECT nummer FROM startnummern_sperrliste ORDER BY nummer ASC')
+            ->fetchAll();
 
-        View::render('admin/startnummern_fehlend', [
-            'teilnehmer' => $teilnehmer,
-        ], 'Fehlende Startnummern – ORBV Turnier');
+        View::render('admin/startnummern_sperrliste', [
+            'gesperrt' => $gesperrt,
+        ], 'Startnummern-Sperrliste – ORBV Turnier');
+    }
+
+    public function sperrlisteHinzufuegen(): void
+    {
+        Auth::requireAdmin();
+
+        $nummer = (int) ($_POST['nummer'] ?? 0);
+        if ($nummer > 0) {
+            Database::connection()
+                ->prepare('INSERT OR IGNORE INTO startnummern_sperrliste (nummer) VALUES (:nummer)')
+                ->execute(['nummer' => $nummer]);
+        }
+
+        header('Location: /admin/startnummern/sperrliste');
+        exit;
+    }
+
+    public function sperrlisteEntfernen(string $nummer): void
+    {
+        Auth::requireAdmin();
+
+        Database::connection()
+            ->prepare('DELETE FROM startnummern_sperrliste WHERE nummer = :nummer')
+            ->execute(['nummer' => (int) $nummer]);
+
+        header('Location: /admin/startnummern/sperrliste');
+        exit;
     }
 }

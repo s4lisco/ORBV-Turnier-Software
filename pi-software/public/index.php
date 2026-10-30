@@ -51,7 +51,9 @@ $router->get('/organisatoren', [DashboardController::class, 'index']);
 $router->get('/admin/import', [ImportController::class, 'show']);
 $router->post('/admin/import', [ImportController::class, 'upload']);
 $router->post('/admin/startnummern', [StartnummerController::class, 'vergeben']);
-$router->get('/admin/startnummern/fehlend', [StartnummerController::class, 'fehlende']);
+$router->get('/admin/startnummern/sperrliste', [StartnummerController::class, 'sperrliste']);
+$router->post('/admin/startnummern/sperrliste', [StartnummerController::class, 'sperrlisteHinzufuegen']);
+$router->post('/admin/startnummern/sperrliste/{nummer}/entfernen', [StartnummerController::class, 'sperrlisteEntfernen']);
 $router->get('/admin/kategorien/{kategorieId}/teilnehmer', [TeilnehmerController::class, 'liste']);
 $router->post('/admin/teilnehmer/{teilnehmerId}/loeschen', [TeilnehmerController::class, 'delete']);
 
@@ -68,6 +70,7 @@ $router->post('/admin/kategorien/{kategorieId}/startliste-vorschau/mischen', [Ro
 $router->get('/admin/runden/{rundeId}', [RoundController::class, 'show']);
 $router->get('/admin/runden/{rundeId}/status', [RoundController::class, 'status']);
 $router->get('/admin/runden/{rundeId}/startliste', [RoundController::class, 'startliste']);
+$router->post('/admin/runden/{rundeId}/startliste/mischen', [RoundController::class, 'startlisteMischen']);
 $router->get('/admin/runden/{rundeId}/zwischenrangliste', [RoundController::class, 'zwischenrangliste']);
 $router->post('/admin/runden/{rundeId}/abschliessen', [RoundController::class, 'abschliessen']);
 $router->post('/admin/runden/{rundeId}/abbrechen', [RoundController::class, 'abbrechen']);

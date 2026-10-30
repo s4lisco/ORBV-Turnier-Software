@@ -18,10 +18,11 @@ test('Turnier-Reset: löscht alle Turnierdaten, Admin-Login bleibt erhalten (Fee
 
     $rundeId = $roundService->starteErsteRunde($kategorieId);
     orbv_bewerten($rundeId, $teilnehmerIds[0], $kategorieId, $richterIds, 8.0);
+    $pdo->exec('INSERT INTO startnummern_sperrliste (nummer) VALUES (13)');
 
     (new TurnierResetService())->alleDatenLoeschen();
 
-    $tabellen = ['kategorien', 'kriterien', 'teilnehmer', 'runden', 'runde_teilnehmer', 'wertungsrichter', 'bewertungen', 'praesenz_status', 'fehler_eintraege'];
+    $tabellen = ['kategorien', 'kriterien', 'teilnehmer', 'runden', 'runde_teilnehmer', 'wertungsrichter', 'bewertungen', 'praesenz_status', 'fehler_eintraege', 'startnummern_sperrliste'];
     foreach ($tabellen as $tabelle) {
         $anzahl = (int) $pdo->query("SELECT COUNT(*) AS c FROM $tabelle")->fetch()['c'];
         assertEquals(0, $anzahl, "Tabelle $tabelle sollte nach Reset leer sein");

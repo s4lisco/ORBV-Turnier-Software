@@ -111,15 +111,64 @@ final class RoundService
     }
 
     /**
+     * Mischt die Startreihenfolge einer bereits angelegten, aber noch nicht
+     * gestarteten Runde neu (final2, Hoffnungsrunde, Finale – Button "Neu
+     * mischen" auf der Startliste dieser Runde). Für die allererste Runde
+     * einer Kategorie gibt es dafür `mischeKategorieStartreihenfolge()`, da
+     * vor `starteErsteRunde()` noch keine `runde_id` existiert. Sobald die
+     * Runde gestartet wurde (`laufend`) oder abgeschlossen ist, ist kein
+     * Mischen mehr möglich.
+     */
+    public function mischeStartliste(int $rundeId): void
+    {
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare('SELECT status FROM runden WHERE id = :id');
+        $stmt->execute(['id' => $rundeId]);
+        $runde = $stmt->fetch();
+
+        if (!$runde) {
+            throw new RuntimeException('Runde nicht gefunden.');
+        }
+
+        if ($runde['status'] !== 'offen') {
+            throw new RuntimeException('Die Startliste kann nur vor dem Start der Runde neu gemischt werden.');
+        }
+
+        $stmt = $pdo->prepare('SELECT teilnehmer_id FROM runde_teilnehmer WHERE runde_id = :runde_id');
+        $stmt->execute(['runde_id' => $rundeId]);
+        $teilnehmerIds = array_map('intval', array_column($stmt->fetchAll(), 'teilnehmer_id'));
+
+        if ($teilnehmerIds === []) {
+            return;
+        }
+
+        shuffle($teilnehmerIds);
+
+        $update = $pdo->prepare('UPDATE runde_teilnehmer SET reihenfolge = :reihenfolge WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id');
+        foreach (array_values($teilnehmerIds) as $index => $teilnehmerId) {
+            $update->execute(['reihenfolge' => $index + 1, 'runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId]);
+        }
+    }
+
+    /**
      * Mischt die Startreihenfolge einer Kategorie neu, bevor deren erste Runde
      * gestartet wird (Button "Neu mischen" auf der Startlisten-Vorschau,
      * Feedback-Runde 2 – jeder Klick erzeugt eine neue zufällige Reihenfolge).
      * Während eine Runde bereits läuft, ist kein Mischen mehr möglich – sobald
      * starteErsteRunde() aufgerufen wurde, wird diese Reihenfolge 1:1 für die
      * erste Runde übernommen.
+     *
+     * Entzieht vorher allen Teilnehmer:innen dieser Kategorie eine inzwischen
+     * gesperrte Startnummer und ersetzt sie durch eine neue, nicht gesperrte
+     * (siehe `StartnummerService::ersetzeGesperrteNummernFuerKategorie()`) –
+     * Sperren einer Startnummer ist also jederzeit möglich, wirkt sich aber
+     * erst beim nächsten "Neu mischen" aus.
      */
     public function mischeKategorieStartreihenfolge(int $kategorieId): void
     {
+        (new StartnummerService())->ersetzeGesperrteNummernFuerKategorie($kategorieId);
+
         $pdo = Database::connection();
 
         $stmt = $pdo->prepare("SELECT id FROM teilnehmer WHERE kategorie_id = :kategorie_id AND status = 'aktiv'");

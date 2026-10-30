@@ -32,6 +32,9 @@
                     <a href="/admin/runden/<?= (int) $kategorie['laufende_runde_id'] ?>" class="text-sm font-semibold text-blue-600 hover:underline">Laufende Runde steuern →</a>
                 <?php elseif ($kategorie['naechste_runde_id']): ?>
                     <div class="flex items-center gap-3">
+                        <?php if ($kategorie['letzte_abgeschlossene_runde_id']): ?>
+                            <a href="/admin/runden/<?= (int) $kategorie['letzte_abgeschlossene_runde_id'] ?>/zwischenrangliste" class="text-sm text-blue-600 hover:underline">Ergebnisse letzte Runde →</a>
+                        <?php endif; ?>
                         <a href="/admin/runden/<?= (int) $kategorie['naechste_runde_id'] ?>/startliste" class="text-sm text-blue-600 hover:underline">Startliste ansehen &amp; drucken →</a>
                         <form method="post" action="/admin/runden/<?= (int) $kategorie['naechste_runde_id'] ?>/naechste-starten">
                             <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">

@@ -29,6 +29,7 @@ final class TurnierResetService
         $pdo->exec('DELETE FROM kriterien');
         $pdo->exec('DELETE FROM kategorien');
         $pdo->exec('DELETE FROM wertungsrichter');
+        $pdo->exec('DELETE FROM startnummern_sperrliste');
         $pdo->exec(
             "DELETE FROM sqlite_sequence WHERE name != 'admin'"
         );

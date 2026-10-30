@@ -8,6 +8,12 @@
                         Neu mischen
                     </button>
                 </form>
+            <?php elseif ($runde['status'] === 'offen'): ?>
+                <form method="post" action="/admin/runden/<?= (int) $runde['id'] ?>/startliste/mischen">
+                    <button type="submit" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-300">
+                        Neu mischen
+                    </button>
+                </form>
             <?php endif; ?>
             <button type="button" onclick="window.print()" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
                 Drucken

@@ -29,8 +29,8 @@
         <div class="mb-4 flex items-center justify-between">
             <h2 class="text-lg font-semibold text-slate-800">Kategorien</h2>
             <div class="flex gap-2">
-                <a href="/admin/startnummern/fehlend" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-300">
-                    Fehlende Startnummern
+                <a href="/admin/startnummern/sperrliste" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-300">
+                    Startnummern-Sperrliste
                 </a>
                 <form method="post" action="/admin/startnummern">
                     <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">

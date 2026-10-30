@@ -88,6 +88,14 @@ CREATE TABLE IF NOT EXISTS fehler_eintraege (
     erstellt_am TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Sperrliste für Startnummern (Feedback-Runde 2, ersetzt die reine
+-- "fehlende Startnummern"-Liste): Nummern, die hier eingetragen sind, werden
+-- von StartnummerService::vergeben() bei der automatischen Vergabe übersprungen.
+CREATE TABLE IF NOT EXISTS startnummern_sperrliste (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nummer INTEGER NOT NULL UNIQUE
+);
+
 CREATE TABLE IF NOT EXISTS praesenz_status (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     runde_id INTEGER NOT NULL REFERENCES runden(id),

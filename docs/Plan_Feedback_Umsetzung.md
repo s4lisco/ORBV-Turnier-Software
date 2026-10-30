@@ -208,15 +208,25 @@ und Altersverifikation bei der Anmeldung werden vorerst **nicht** umgesetzt.
   vor dem Anlegen jeder Runde (`starteErsteRunde`, `nachVorrunde`, `nachHoffnungsrunde`).
   final2 bleibt dabei weiterhin die umgekehrte Reihenfolge von final1 (Runde-1-Spezifikation
   12.1 bleibt bestehen), da beide aus demselben gemischten Array abgeleitet werden.
-- Button "Neu mischen" gibt es **nur auf der Startlisten-Vorschau vor dem Rundenstart**
-  (`/admin/kategorien/{kategorieId}/startliste-vorschau`), nicht mehr während eine Runde
-  läuft (Korrektur nach Rückfrage). `RoundService::mischeKategorieStartreihenfolge()`
-  schreibt die neue Zufallsreihenfolge in die neue Spalte `teilnehmer.start_reihenfolge`
-  (Route `POST /admin/kategorien/{kategorieId}/startliste-vorschau/mischen`). Wurde manuell
-  gemischt, übernimmt `starteErsteRunde()` diese Reihenfolge 1:1; wurde nicht manuell
-  gemischt, mischt `starteErsteRunde()` beim Rundenstart automatisch (Default bleibt
-  "immer zufällig"). Jeder Klick auf "Neu mischen" überschreibt die vorherige Zufalls-
-  reihenfolge, es gibt keinen "ursprünglichen" Zustand.
+- Button "Neu mischen" gibt es auf **jeder Runde, solange sie noch nicht gestartet wurde**
+  (Korrektur nach Rückfrage – zuerst nur auf der allerersten Vorschau gebaut, dann auf
+  Wunsch auf alle Folgerunden erweitert), nie mehr während eine Runde läuft oder
+  abgeschlossen ist:
+  - **Vor der allerersten Runde einer Kategorie** (noch keine `runde_id`):
+    `/admin/kategorien/{kategorieId}/startliste-vorschau`,
+    `RoundService::mischeKategorieStartreihenfolge()` schreibt die Reihenfolge in die neue
+    Spalte `teilnehmer.start_reihenfolge` (Route
+    `POST /admin/kategorien/{kategorieId}/startliste-vorschau/mischen`). Wurde manuell
+    gemischt, übernimmt `starteErsteRunde()` diese Reihenfolge 1:1; sonst mischt
+    `starteErsteRunde()` beim Rundenstart automatisch selbst (Default bleibt "immer
+    zufällig").
+  - **Für bereits angelegte, aber noch nicht gestartete Folgerunden** (final2,
+    Hoffnungsrunde, Finale – Status `offen`): `/admin/runden/{rundeId}/startliste`,
+    `RoundService::mischeStartliste()` mischt direkt `runde_teilnehmer.reihenfolge` dieser
+    Runde (Route `POST /admin/runden/{rundeId}/startliste/mischen`). Wirft eine Exception,
+    falls die Runde nicht mehr `offen` ist (bereits gestartet/abgeschlossen).
+  - Jeder Klick auf "Neu mischen" überschreibt die vorherige Zufallsreihenfolge, es gibt
+    keinen "ursprünglichen" Zustand.
 
 ## 14. Zwischenrangliste während laufender Runde
 - Neue Methode `RoundService::zwischenranglisteFuerRunde()`: vorläufige Rangliste anhand der
@@ -224,6 +234,14 @@ und Altersverifikation bei der Anmeldung werden vorerst **nicht** umgesetzt.
   gestrichen, darunter einfacher Durchschnitt). Neue Admin-Ansicht
   `admin/zwischenrangliste.php`, Route `GET /admin/runden/{rundeId}/zwischenrangliste`,
   verlinkt von der Rundensteuerung.
+- **Nachgebessert:** Die Zwischenrangliste blieb bisher nach Abschluss einer Runde
+  unerreichbar, bis die nächste Runde gestartet wurde (`round_overview.php` verlinkte in
+  diesem Zustand nur noch auf die neue Runde). `RoundController::index()` ermittelt jetzt
+  zusätzlich die zuletzt abgeschlossene Runde je Kategorie
+  (`letzte_abgeschlossene_runde_id`); solange die nächste Runde noch nicht gestartet wurde,
+  zeigt `round_overview.php` einen zusätzlichen Link "Ergebnisse letzte Runde →" auf deren
+  Zwischenrangliste (die bei vollständig bewerteter Runde faktisch das Endergebnis dieser
+  Runde zeigt).
 
 ## 15. Tie-Break beim Aufstieg
 - Bei Punktgleichheit genau an der Aufstiegsgrenze (Vorrunde→Final/Hoffnungsrunde,
@@ -262,10 +280,25 @@ und Altersverifikation bei der Anmeldung werden vorerst **nicht** umgesetzt.
   weder im Admin-Bereich (`admin/results.php`) noch im CSV-Export für turnier.orbv.ch
   (`CsvExportService`) – (`RankingService::rangliste()` filtert sie vollständig heraus).
 
-## 19. Startnummernvergabe: Liste fehlender Nummern
-- Neue Ansicht `admin/startnummern_fehlend.php` (Route
-  `GET /admin/startnummern/fehlend`, verlinkt vom Dashboard): listet alle Teilnehmer:innen
-  ohne zugewiesene Startnummer, für die manuelle Ausgabe der Nummern-Karten am Check-in.
+## 19. Startnummernvergabe: Sperrliste
+- **Korrigiert nach Rückfrage:** Statt einer reinen Anzeige fehlender Nummern gibt es jetzt
+  eine **Sperrliste** für Startnummern (neue Tabelle `startnummern_sperrliste`, Spalte
+  `nummer`). Admin-Ansicht `admin/startnummern_sperrliste.php`
+  (`GET /admin/startnummern/sperrliste`, verlinkt vom Dashboard) zum Hinzufügen/Entfernen
+  gesperrter Nummern (`StartnummerController::sperrliste()/sperrlisteHinzufuegen()/
+  sperrlisteEntfernen()`).
+- `StartnummerService::vergeben()` überspringt beim automatischen Hochzählen jede Nummer,
+  die auf der Sperrliste steht – z.B. weil die physische Nummernkarte fehlt oder beschädigt
+  ist. Die Sperrliste wird beim Turnier-Reset ebenfalls geleert
+  (`TurnierResetService::alleDatenLoeschen()`).
+- **Nachgebessert:** Sperren ist jederzeit möglich, auch für eine bereits vergebene Nummer –
+  es gibt keine Validierung dagegen. `StartnummerService::vergeben()` selbst rührt
+  bestehende Nummern dabei nicht an. Erst beim nächsten Klick auf **"Neu mischen"** auf der
+  Startlisten-Vorschau der betroffenen Kategorie (also immer vor dem Rundenstart) wird einer
+  Person, die aktuell eine inzwischen gesperrte Nummer trägt, diese entzogen
+  (`StartnummerService::ersetzeGesperrteNummernFuerKategorie()`, aufgerufen von
+  `RoundService::mischeKategorieStartreihenfolge()`) und direkt durch eine neue, nicht
+  gesperrte Nummer ersetzt.
 
 ## 20. Ersteinrichtung nicht erneut nach Reset
 - `TurnierResetService::alleDatenLoeschen()` löscht die `admin`-Tabelle nicht mehr –
