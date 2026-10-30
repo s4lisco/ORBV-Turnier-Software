@@ -64,11 +64,11 @@ $router->get('/admin/runden', [RoundController::class, 'index']);
 $router->post('/admin/runden/{kategorieId}/starten', [RoundController::class, 'starten']);
 $router->post('/admin/runden/{rundeId}/naechste-starten', [RoundController::class, 'naechsteStarten']);
 $router->get('/admin/kategorien/{kategorieId}/startliste-vorschau', [RoundController::class, 'startlisteVorschau']);
+$router->post('/admin/kategorien/{kategorieId}/startliste-vorschau/mischen', [RoundController::class, 'startlisteVorschauMischen']);
 $router->get('/admin/runden/{rundeId}', [RoundController::class, 'show']);
 $router->get('/admin/runden/{rundeId}/status', [RoundController::class, 'status']);
 $router->get('/admin/runden/{rundeId}/startliste', [RoundController::class, 'startliste']);
 $router->get('/admin/runden/{rundeId}/zwischenrangliste', [RoundController::class, 'zwischenrangliste']);
-$router->post('/admin/runden/{rundeId}/startliste/mischen', [RoundController::class, 'startlisteMischen']);
 $router->post('/admin/runden/{rundeId}/abschliessen', [RoundController::class, 'abschliessen']);
 $router->post('/admin/runden/{rundeId}/abbrechen', [RoundController::class, 'abbrechen']);
 

@@ -29,10 +29,12 @@ final class RoundService
         }
 
         $stmt = $pdo->prepare(
-            "SELECT id FROM teilnehmer WHERE kategorie_id = :kategorie_id AND status = 'aktiv' ORDER BY startnummer ASC, id ASC"
+            "SELECT id, start_reihenfolge FROM teilnehmer WHERE kategorie_id = :kategorie_id AND status = 'aktiv'
+             ORDER BY start_reihenfolge ASC, startnummer ASC, id ASC"
         );
         $stmt->execute(['kategorie_id' => $kategorieId]);
-        $teilnehmerIds = array_map('intval', array_column($stmt->fetchAll(), 'id'));
+        $teilnehmerRows = $stmt->fetchAll();
+        $teilnehmerIds = array_map(fn ($t) => (int) $t['id'], $teilnehmerRows);
 
         if (count($teilnehmerIds) === 0) {
             throw new RuntimeException('Keine Teilnehmer:innen in dieser Kategorie.');
@@ -46,10 +48,15 @@ final class RoundService
             throw new RuntimeException('Bitte zuerst im Dashboard die Startnummern vergeben, bevor die Runde gestartet wird.');
         }
 
-        // Startliste ist immer zufällig (nicht nach Startnummer sortiert), siehe
-        // Feedback-Runde 2. final2 bleibt dabei die umgekehrte Reihenfolge von
-        // final1, daher wird hier einmal gemischt und für final2 nur gespiegelt.
-        shuffle($teilnehmerIds);
+        // Startliste ist immer zufällig (Feedback-Runde 2). Wurde auf der
+        // Startlisten-Vorschau bereits manuell gemischt ("Neu mischen", siehe
+        // mischeKategorieStartreihenfolge()), wird genau diese Reihenfolge
+        // übernommen; sonst wird jetzt automatisch gemischt. final2 bleibt
+        // dabei die umgekehrte Reihenfolge von final1.
+        $bereitsGemischt = array_reduce($teilnehmerRows, fn ($ok, $t) => $ok && $t['start_reihenfolge'] !== null, true);
+        if (!$bereitsGemischt) {
+            shuffle($teilnehmerIds);
+        }
 
         if (count($teilnehmerIds) <= 6) {
             $final1Id = $this->insertRunde($kategorieId, 'final1', 'laufend', 1);
@@ -104,17 +111,20 @@ final class RoundService
     }
 
     /**
-     * Mischt die Startreihenfolge einer Runde neu (Button "Neu mischen" auf der
-     * Startliste, Feedback-Runde 2 – jeder Klick erzeugt eine neue zufällige
-     * Reihenfolge, es gibt keinen "ursprünglichen" Zustand zum Zurücksetzen).
+     * Mischt die Startreihenfolge einer Kategorie neu, bevor deren erste Runde
+     * gestartet wird (Button "Neu mischen" auf der Startlisten-Vorschau,
+     * Feedback-Runde 2 – jeder Klick erzeugt eine neue zufällige Reihenfolge).
+     * Während eine Runde bereits läuft, ist kein Mischen mehr möglich – sobald
+     * starteErsteRunde() aufgerufen wurde, wird diese Reihenfolge 1:1 für die
+     * erste Runde übernommen.
      */
-    public function mischeStartliste(int $rundeId): void
+    public function mischeKategorieStartreihenfolge(int $kategorieId): void
     {
         $pdo = Database::connection();
 
-        $stmt = $pdo->prepare('SELECT teilnehmer_id FROM runde_teilnehmer WHERE runde_id = :runde_id');
-        $stmt->execute(['runde_id' => $rundeId]);
-        $teilnehmerIds = array_map('intval', array_column($stmt->fetchAll(), 'teilnehmer_id'));
+        $stmt = $pdo->prepare("SELECT id FROM teilnehmer WHERE kategorie_id = :kategorie_id AND status = 'aktiv'");
+        $stmt->execute(['kategorie_id' => $kategorieId]);
+        $teilnehmerIds = array_map('intval', array_column($stmt->fetchAll(), 'id'));
 
         if ($teilnehmerIds === []) {
             return;
@@ -122,9 +132,9 @@ final class RoundService
 
         shuffle($teilnehmerIds);
 
-        $update = $pdo->prepare('UPDATE runde_teilnehmer SET reihenfolge = :reihenfolge WHERE runde_id = :runde_id AND teilnehmer_id = :teilnehmer_id');
+        $update = $pdo->prepare('UPDATE teilnehmer SET start_reihenfolge = :start_reihenfolge WHERE id = :id');
         foreach (array_values($teilnehmerIds) as $index => $teilnehmerId) {
-            $update->execute(['reihenfolge' => $index + 1, 'runde_id' => $rundeId, 'teilnehmer_id' => $teilnehmerId]);
+            $update->execute(['start_reihenfolge' => $index + 1, 'id' => $teilnehmerId]);
         }
     }
 

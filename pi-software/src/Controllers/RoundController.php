@@ -172,16 +172,6 @@ final class RoundController
         ], 'Startliste: ' . $runde['kategorie_name'] . ' – ORBV Turnier');
     }
 
-    /** Mischt die Startreihenfolge einer Runde neu (Button "Neu mischen", Feedback-Runde 2). */
-    public function startlisteMischen(string $rundeId): void
-    {
-        Auth::requireAdmin();
-        (new RoundService())->mischeStartliste((int) $rundeId);
-
-        header('Location: /admin/runden/' . (int) $rundeId . '/startliste');
-        exit;
-    }
-
     /** Druckbare Startliste vor dem Start der ersten Runde einer Kategorie (Vorschau anhand Startnummern-Reihenfolge). */
     public function startlisteVorschau(string $kategorieId): void
     {
@@ -201,7 +191,7 @@ final class RoundController
         $stmt = Database::connection()->prepare(
             "SELECT id, startnummer, name, name_p2, verein_name FROM teilnehmer
              WHERE kategorie_id = :kategorie_id AND status = 'aktiv'
-             ORDER BY startnummer ASC, id ASC"
+             ORDER BY start_reihenfolge ASC, startnummer ASC, id ASC"
         );
         $stmt->execute(['kategorie_id' => $kategorieId]);
         $teilnehmer = $stmt->fetchAll();
@@ -209,12 +199,22 @@ final class RoundController
         $paarweise = $roundService->tanztPaarweise($kategorie['typ'], $kategorie['name']);
 
         View::render('admin/startliste', [
-            'runde' => ['id' => null, 'kategorie_name' => $kategorie['name'], 'typ' => 'Vorschau vor Rundenstart'],
+            'runde' => ['id' => null, 'kategorie_id' => (int) $kategorieId, 'kategorie_name' => $kategorie['name'], 'typ' => 'Vorschau vor Rundenstart'],
             'backUrl' => '/admin/runden',
             'teilnehmer' => $teilnehmer,
             'paarweise' => $paarweise,
             'gruppen' => array_chunk($teilnehmer, $paarweise ? 2 : 1),
         ], 'Startliste: ' . $kategorie['name'] . ' – ORBV Turnier');
+    }
+
+    /** Mischt die Startreihenfolge einer Kategorie neu, vor dem Start der ersten Runde (Feedback-Runde 2). */
+    public function startlisteVorschauMischen(string $kategorieId): void
+    {
+        Auth::requireAdmin();
+        (new RoundService())->mischeKategorieStartreihenfolge((int) $kategorieId);
+
+        header('Location: /admin/kategorien/' . (int) $kategorieId . '/startliste-vorschau');
+        exit;
     }
 
     public function abschliessen(string $rundeId): void

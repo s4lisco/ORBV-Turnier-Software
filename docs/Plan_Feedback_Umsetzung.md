@@ -208,9 +208,15 @@ und Altersverifikation bei der Anmeldung werden vorerst **nicht** umgesetzt.
   vor dem Anlegen jeder Runde (`starteErsteRunde`, `nachVorrunde`, `nachHoffnungsrunde`).
   final2 bleibt dabei weiterhin die umgekehrte Reihenfolge von final1 (Runde-1-Spezifikation
   12.1 bleibt bestehen), da beide aus demselben gemischten Array abgeleitet werden.
-- Neuer Button "Neu mischen" auf der Startliste (`RoundService::mischeStartliste()`,
-  Route `POST /admin/runden/{rundeId}/startliste/mischen`) – jeder Klick erzeugt eine neue
-  zufällige Reihenfolge, es gibt keinen "ursprünglichen" Zustand.
+- Button "Neu mischen" gibt es **nur auf der Startlisten-Vorschau vor dem Rundenstart**
+  (`/admin/kategorien/{kategorieId}/startliste-vorschau`), nicht mehr während eine Runde
+  läuft (Korrektur nach Rückfrage). `RoundService::mischeKategorieStartreihenfolge()`
+  schreibt die neue Zufallsreihenfolge in die neue Spalte `teilnehmer.start_reihenfolge`
+  (Route `POST /admin/kategorien/{kategorieId}/startliste-vorschau/mischen`). Wurde manuell
+  gemischt, übernimmt `starteErsteRunde()` diese Reihenfolge 1:1; wurde nicht manuell
+  gemischt, mischt `starteErsteRunde()` beim Rundenstart automatisch (Default bleibt
+  "immer zufällig"). Jeder Klick auf "Neu mischen" überschreibt die vorherige Zufalls-
+  reihenfolge, es gibt keinen "ursprünglichen" Zustand.
 
 ## 14. Zwischenrangliste während laufender Runde
 - Neue Methode `RoundService::zwischenranglisteFuerRunde()`: vorläufige Rangliste anhand der
@@ -235,6 +241,13 @@ und Altersverifikation bei der Anmeldung werden vorerst **nicht** umgesetzt.
   verrechnet (bester/schlechtester gestrichen, Rest gemittelt). Der Durchschnitt wird zur
   Gesamtpunktzahl der Runde addiert (ist ≤ 0) und als zusätzliches "Fehler"-Feld neben
   Tanz/Ausdruck/Technik/Gesamt angezeigt.
+- **Bugfix (Testing-Feedback):** Bei Kategorien mit ≤ 6 Teilnehmer:innen (Final1+Final2)
+  wurde das angezeigte Gesamt bisher unabhängig von den angezeigten Kriteriumswerten aus
+  Ø(gesamt1, gesamt2) berechnet – durch die getrennte Rundung konnte die Summe der
+  angezeigten Spalten (z. B. 5.2+5.9+6.9-4.4 = 13.6) vom angezeigten Gesamt (13.5)
+  abweichen. `RankingService::endranglisteFuerKategorie()` bildet das Gesamt jetzt aus der
+  Summe der bereits kombinierten, gerundeten Kriteriumswerte, sodass beide immer
+  übereinstimmen.
 
 ## 17. Hoffnungsrunde-Ausgeschiedene: gemeinsamer Rang
 - **Überschreibt Runde-1-Punkt 12.4:** Statt individueller Rangnummern nach

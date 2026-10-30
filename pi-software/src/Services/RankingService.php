@@ -74,21 +74,31 @@ final class RankingService
             $kriterien2 = $roundService->kriteriumsErgebnisseFuerRunde($byTyp['final2']);
 
             $kombiniert = [];
+            $kriterienKombiniert = [];
             $alleIds = array_unique(array_merge(array_keys($erg1), array_keys($erg2)));
             foreach ($alleIds as $teilnehmerId) {
                 $g1 = $erg1[$teilnehmerId] ?? null;
                 $g2 = $erg2[$teilnehmerId] ?? null;
-                $kombiniert[$teilnehmerId] = ($g1 === null || $g2 === null)
-                    ? null
-                    : round(($g1 + $g2) / 2, 1);
+
+                if ($g1 === null || $g2 === null) {
+                    $kombiniert[$teilnehmerId] = null;
+                    continue;
+                }
+
+                // Gesamt wird aus der Summe der bereits kombinierten/gerundeten
+                // Kriteriumswerte gebildet (nicht separat aus Ø(gesamt1, gesamt2)),
+                // damit die Summe der angezeigten Spalten immer dem angezeigten
+                // Gesamt entspricht (sonst doppelte, unabhängige Rundung möglich).
+                $kriterienKombiniert[$teilnehmerId] = $this->kombiniereKriterien(
+                    $kriterien1[$teilnehmerId] ?? [],
+                    $kriterien2[$teilnehmerId] ?? []
+                );
+                $kombiniert[$teilnehmerId] = round(array_sum($kriterienKombiniert[$teilnehmerId]), 1);
             }
 
             $rangliste = $this->rangliste($kombiniert);
             foreach ($rangliste as &$eintrag) {
-                $eintrag['kriterien'] = $this->kombiniereKriterien(
-                    $kriterien1[$eintrag['teilnehmer_id']] ?? [],
-                    $kriterien2[$eintrag['teilnehmer_id']] ?? []
-                );
+                $eintrag['kriterien'] = $kriterienKombiniert[$eintrag['teilnehmer_id']] ?? [];
             }
             unset($eintrag);
 

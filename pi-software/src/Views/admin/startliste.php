@@ -2,8 +2,8 @@
     <div class="mb-4 flex items-center justify-between print:hidden">
         <a href="<?= htmlspecialchars($backUrl ?? '/admin/runden/' . (int) $runde['id']) ?>" class="text-sm text-blue-600 hover:underline">&larr; zurück zur Rundensteuerung</a>
         <div class="flex gap-2">
-            <?php if ($runde['id'] !== null): ?>
-                <form method="post" action="/admin/runden/<?= (int) $runde['id'] ?>/startliste/mischen">
+            <?php if ($runde['id'] === null): ?>
+                <form method="post" action="/admin/kategorien/<?= (int) $runde['kategorie_id'] ?>/startliste-vorschau/mischen">
                     <button type="submit" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-300">
                         Neu mischen
                     </button>

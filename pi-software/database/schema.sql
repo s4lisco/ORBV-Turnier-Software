@@ -35,7 +35,11 @@ CREATE TABLE IF NOT EXISTS teilnehmer (
     geburtsdatum_p2 TEXT,
     anzahl_taenzerinnen INTEGER,
     verein_name TEXT,
-    status TEXT NOT NULL DEFAULT 'aktiv' CHECK (status IN ('aktiv', 'dnf'))
+    status TEXT NOT NULL DEFAULT 'aktiv' CHECK (status IN ('aktiv', 'dnf')),
+    -- Manuell gemischte Startreihenfolge vor Rundenstart (Feedback-Runde 2,
+    -- Button "Neu mischen" auf der Startlisten-Vorschau). NULL = noch nicht
+    -- manuell gemischt, dann wird beim Rundenstart automatisch gemischt.
+    start_reihenfolge INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS runden (

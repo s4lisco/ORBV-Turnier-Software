@@ -3,7 +3,34 @@
 declare(strict_types=1);
 
 use App\Database;
+use App\Services\RankingService;
 use App\Services\RoundService;
+
+/** Bewertet eine/n Teilnehmer:in mit frei wählbaren, pro Kriterium unterschiedlichen Punktzahlen (uniform über alle 5 Richter). */
+function orbv_bewerten_je_kriterium(int $rundeId, int $teilnehmerId, int $kategorieId, array $richterIds, array $punkteProKriteriumsname): void
+{
+    $pdo = Database::connection();
+    $kStmt = $pdo->prepare('SELECT id, name FROM kriterien WHERE kategorie_id = :kategorie_id');
+    $kStmt->execute(['kategorie_id' => $kategorieId]);
+
+    $insert = $pdo->prepare(
+        'INSERT INTO bewertungen (runde_id, teilnehmer_id, wertungsrichter_id, kriterium_id, punkte)
+         VALUES (:runde_id, :teilnehmer_id, :wertungsrichter_id, :kriterium_id, :punkte)'
+    );
+
+    foreach ($kStmt->fetchAll() as $kriterium) {
+        $punkte = $punkteProKriteriumsname[$kriterium['name']];
+        foreach ($richterIds as $richterId) {
+            $insert->execute([
+                'runde_id' => $rundeId,
+                'teilnehmer_id' => $teilnehmerId,
+                'wertungsrichter_id' => $richterId,
+                'kriterium_id' => $kriterium['id'],
+                'punkte' => $punkte,
+            ]);
+        }
+    }
+}
 
 /** Fügt einem Richter mehrere Fehler-Einträge für eine/n Teilnehmer:in hinzu. */
 function orbv_fehler_hinzufuegen(int $rundeId, int $teilnehmerId, int $richterId, array $werte): void
@@ -133,4 +160,43 @@ test('Tie-Break Hoffnungsrunde: Punktgleichheit an der Aufstiegsgrenze lässt al
 
     // 3 ursprünglich direkt Qualifizierte + alle 4 aus der Hoffnungsrunde.
     assertEquals(7, orbv_runde_teilnehmer_anzahl($finalId));
+});
+
+test('Endrangliste Final1+Final2: Gesamt entspricht der Summe der angezeigten Kriteriumswerte (kein Rundungsdrift durch doppelte Rundung)', function () {
+    $kategorieId = orbv_seed_kategorie('Solo Test', 'solo', ['Tanz', 'Ausdruck', 'Technik']);
+    $teilnehmerIds = orbv_seed_teilnehmer($kategorieId, 2);
+    $richterIds = orbv_seed_richter();
+    $roundService = new RoundService();
+
+    $final1Id = $roundService->starteErsteRunde($kategorieId);
+    $final2Id = orbv_runde_id($kategorieId, 'final2');
+
+    // Bewusst Werte, bei denen die paarweisen Kriteriums-Durchschnitte auf
+    // X.X5 landen (Rundung nötig) -> klassischer Fall für Rundungsdrift
+    // zwischen "Summe runden" und "Summanden runden, dann summieren".
+    orbv_bewerten_je_kriterium($final1Id, $teilnehmerIds[0], $kategorieId, $richterIds, [
+        'Tanz' => 5.1, 'Ausdruck' => 5.8, 'Technik' => 6.8,
+    ]);
+    orbv_bewerten_je_kriterium($final1Id, $teilnehmerIds[1], $kategorieId, $richterIds, [
+        'Tanz' => 4.0, 'Ausdruck' => 4.0, 'Technik' => 4.0,
+    ]);
+    $roundService->rundeAbschliessen($final1Id);
+
+    $roundService->freigeben($final2Id, $teilnehmerIds);
+    orbv_bewerten_je_kriterium($final2Id, $teilnehmerIds[0], $kategorieId, $richterIds, [
+        'Tanz' => 5.4, 'Ausdruck' => 6.1, 'Technik' => 7.1,
+    ]);
+    orbv_bewerten_je_kriterium($final2Id, $teilnehmerIds[1], $kategorieId, $richterIds, [
+        'Tanz' => 4.0, 'Ausdruck' => 4.0, 'Technik' => 4.0,
+    ]);
+    $roundService->rundeAbschliessen($final2Id);
+
+    $rangliste = (new RankingService())->endranglisteFuerKategorie($kategorieId);
+    foreach ($rangliste as $eintrag) {
+        assertEqualsFloat(
+            round(array_sum($eintrag['kriterien']), 1),
+            $eintrag['gesamt'],
+            'Summe der angezeigten Kriteriumswerte muss dem angezeigten Gesamt entsprechen'
+        );
+    }
 });
